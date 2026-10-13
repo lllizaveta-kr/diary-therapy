@@ -95,5 +95,20 @@
 ```bash
 git clone https://github.com/lllizaveta-kr/diary-therapy.git
 cd diary-therapy
+```
 
+### 2. Установить зависимости
 
+```bash
+pip install PySide6 mysql-connector-python
+```
+
+### 3. Настроить подключение к БД
+
+Скопируйте `config.example.py` в `config.py` и укажите свой пароль от MySQL.
+
+### 4. Запустить приложение
+
+```bash
+python main.py
+```
