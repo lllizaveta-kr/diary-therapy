@@ -1,0 +1,178 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>LoginWindow</class>
+ <widget class="QMainWindow" name="LoginWindow">
+  <property name="geometry">
+   <rect><x>0</x><y>0</y><width>900</width><height>600</height></rect>
+  </property>
+  <property name="windowTitle"><string>Авторизация</string></property>
+  <property name="styleSheet">
+   <string notr="true">QMainWindow { background-color: #EEF3F8; }
+QLabel { color: #1A1A1A; background-color: transparent; }
+QLineEdit { background-color: #FFFFFF; color: #1A1A1A; border: 1px solid #CCCCCC; border-radius: 10px; padding: 10px 14px; font-family: "Times New Roman"; font-size: 14px; }
+QLineEdit::placeholder { color: #999999; }
+QLineEdit:focus { border: 2px solid #2F5C8F; }
+QPushButton { outline: none; }
+QPushButton:focus { outline: none; }</string>
+  </property>
+  <widget class="QWidget" name="centralwidget">
+   <layout class="QGridLayout" name="gridLayout">
+    <property name="leftMargin"><number>0</number></property>
+    <property name="topMargin"><number>0</number></property>
+    <property name="rightMargin"><number>0</number></property>
+    <property name="bottomMargin"><number>0</number></property>
+    <property name="horizontalSpacing"><number>0</number></property>
+    <property name="verticalSpacing"><number>0</number></property>
+
+    <item row="0" column="0">
+     <widget class="QFrame" name="leftBubblesFrame">
+      <property name="minimumSize"><size><width>120</width><height>0</height></size></property>
+      <property name="maximumSize"><size><width>180</width><height>16777215</height></size></property>
+      <property name="styleSheet"><string notr="true">background-color: transparent; border: none;</string></property>
+      <layout class="QVBoxLayout" name="leftBubblesLayout">
+       <property name="leftMargin"><number>0</number></property>
+       <property name="topMargin"><number>0</number></property>
+       <property name="rightMargin"><number>0</number></property>
+       <property name="bottomMargin"><number>0</number></property>
+       <item><widget class="QLabel" name="leftBubblesLabel">
+        <property name="text"><string/></property>
+        <property name="alignment"><set>Qt::AlignCenter</set></property>
+       </widget></item>
+      </layout>
+     </widget>
+    </item>
+
+    <item row="0" column="1">
+     <layout class="QVBoxLayout" name="centerLayout">
+      <property name="spacing"><number>14</number></property>
+      <property name="leftMargin"><number>80</number></property>
+      <property name="topMargin"><number>50</number></property>
+      <property name="rightMargin"><number>80</number></property>
+      <property name="bottomMargin"><number>50</number></property>
+
+      <item><spacer name="topSpacer">
+       <property name="orientation"><enum>Qt::Vertical</enum></property>
+       <property name="sizeHint" stdset="0"><size><width>20</width><height>20</height></size></property>
+      </spacer></item>
+
+      <item>
+       <widget class="QLabel" name="titleLabel">
+        <property name="font"><font><family>Times New Roman</family><pointsize>40</pointsize><bold>true</bold></font></property>
+        <property name="styleSheet"><string notr="true">color: #2F5C8F; background-color: transparent;</string></property>
+        <property name="text"><string>ДНЕВНИК
+ТЕРАПИИ</string></property>
+        <property name="alignment"><set>Qt::AlignCenter</set></property>
+       </widget>
+      </item>
+
+      <item>
+       <widget class="QLabel" name="welcomeLabel">
+        <property name="font"><font><family>Times New Roman</family><pointsize>12</pointsize></font></property>
+        <property name="styleSheet"><string notr="true">color: #666666; background-color: transparent;</string></property>
+        <property name="text"><string>Войдите в систему, чтобы продолжить контроль терапии</string></property>
+        <property name="alignment"><set>Qt::AlignCenter</set></property>
+        <property name="wordWrap"><bool>true</bool></property>
+       </widget>
+      </item>
+
+      <item><spacer name="middleSpacer">
+       <property name="orientation"><enum>Qt::Vertical</enum></property>
+       <property name="sizeHint" stdset="0"><size><width>20</width><height>20</height></size></property>
+      </spacer></item>
+
+      <item>
+       <widget class="QLineEdit" name="loginLine">
+        <property name="minimumSize"><size><width>0</width><height>46</height></size></property>
+        <property name="placeholderText"><string>Введите логин</string></property>
+       </widget>
+      </item>
+
+      <item>
+       <widget class="QLineEdit" name="passwrdLine">
+        <property name="minimumSize"><size><width>0</width><height>46</height></size></property>
+        <property name="echoMode"><enum>QLineEdit::Password</enum></property>
+        <property name="placeholderText"><string>Введите пароль</string></property>
+       </widget>
+      </item>
+
+      <item>
+       <layout class="QHBoxLayout" name="forgotLayout">
+        <item><spacer name="forgotLeftSpacer">
+         <property name="orientation"><enum>Qt::Horizontal</enum></property>
+         <property name="sizeHint" stdset="0"><size><width>40</width><height>20</height></size></property>
+        </spacer></item>
+        <item>
+         <widget class="QPushButton" name="forgotPasswordBtn">
+          <property name="cursor"><cursorShape>PointingHandCursor</cursorShape></property>
+          <property name="styleSheet">
+           <string notr="true">QPushButton { background-color: transparent; color: #2F5C8F; border: none; text-decoration: underline; font-family: "Times New Roman"; font-size: 12px; padding: 4px; }
+QPushButton:hover { color: #1E4470; }
+QPushButton:focus { outline: none; }</string>
+          </property>
+          <property name="text"><string>Забыли пароль?</string></property>
+         </widget>
+        </item>
+        <item><spacer name="forgotRightSpacer">
+         <property name="orientation"><enum>Qt::Horizontal</enum></property>
+         <property name="sizeHint" stdset="0"><size><width>40</width><height>20</height></size></property>
+        </spacer></item>
+       </layout>
+      </item>
+
+      <item>
+       <layout class="QHBoxLayout" name="buttonLayout">
+        <item><spacer name="buttonLeftSpacer">
+         <property name="orientation"><enum>Qt::Horizontal</enum></property>
+         <property name="sizeHint" stdset="0"><size><width>40</width><height>20</height></size></property>
+        </spacer></item>
+        <item>
+         <widget class="QPushButton" name="btnEnter">
+          <property name="minimumSize"><size><width>200</width><height>52</height></size></property>
+          <property name="maximumSize"><size><width>200</width><height>52</height></size></property>
+          <property name="font"><font><family>Times New Roman</family><pointsize>16</pointsize><bold>true</bold></font></property>
+          <property name="styleSheet">
+           <string notr="true">QPushButton { background-color: #2F5C8F; color: #FFFFFF; border: none; border-radius: 10px; padding: 0px; }
+QPushButton:hover { background-color: #1E4470; }
+QPushButton:pressed { background-color: #163257; }
+QPushButton:focus { outline: none; }</string>
+          </property>
+          <property name="text"><string>Войти</string></property>
+         </widget>
+        </item>
+        <item><spacer name="buttonRightSpacer">
+         <property name="orientation"><enum>Qt::Horizontal</enum></property>
+         <property name="sizeHint" stdset="0"><size><width>40</width><height>20</height></size></property>
+        </spacer></item>
+       </layout>
+      </item>
+
+      <item><spacer name="bottomSpacer">
+       <property name="orientation"><enum>Qt::Vertical</enum></property>
+       <property name="sizeHint" stdset="0"><size><width>20</width><height>20</height></size></property>
+      </spacer></item>
+     </layout>
+    </item>
+
+    <item row="0" column="2">
+     <widget class="QFrame" name="rightBubblesFrame">
+      <property name="minimumSize"><size><width>120</width><height>0</height></size></property>
+      <property name="maximumSize"><size><width>180</width><height>16777215</height></size></property>
+      <property name="styleSheet"><string notr="true">background-color: transparent; border: none;</string></property>
+      <layout class="QVBoxLayout" name="rightBubblesLayout">
+       <property name="leftMargin"><number>0</number></property>
+       <property name="topMargin"><number>0</number></property>
+       <property name="rightMargin"><number>0</number></property>
+       <property name="bottomMargin"><number>0</number></property>
+       <item><widget class="QLabel" name="rightBubblesLabel">
+        <property name="text"><string/></property>
+        <property name="alignment"><set>Qt::AlignCenter</set></property>
+       </widget></item>
+      </layout>
+     </widget>
+    </item>
+   </layout>
+  </widget>
+ </widget>
+ <resources/>
+ <connections/>
+</ui>

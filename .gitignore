@@ -1,0 +1,14 @@
+.venv/ 
+__pycache__/ 
+*.pyc 
+.idea/ 
+*.pdf 
+*.zip 
+*.rar 
+*.docx 
+
+config.py
+__pycache__/
+*.pyc
+.venv/
+.idea/

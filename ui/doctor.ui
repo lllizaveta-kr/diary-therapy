@@ -1,0 +1,546 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>DoctorWindow</class>
+ <widget class="QMainWindow" name="DoctorWindow">
+  <property name="geometry">
+   <rect><x>0</x><y>0</y><width>1280</width><height>800</height></rect>
+  </property>
+  <property name="windowTitle"><string>Панель врача</string></property>
+  <property name="styleSheet">
+   <string notr="true">QMainWindow { background-color: #EEF3F8; }
+QLabel { color: #1A1A1A; background-color: transparent; }
+QLineEdit { background-color: #FFFFFF; color: #1A1A1A; border: 1px solid #CCCCCC; border-radius: 10px; padding: 10px 14px; font-family: "Times New Roman"; font-size: 13px; }
+QLineEdit::placeholder { color: #999999; }
+QLineEdit:focus { border: 2px solid #2F5C8F; }
+QTextEdit { background-color: #FFFFFF; color: #1A1A1A; border: 1px solid #CCCCCC; border-radius: 10px; padding: 10px 14px; font-family: "Times New Roman"; font-size: 13px; }
+QTextEdit::placeholder { color: #999999; }
+QComboBox { background-color: #FFFFFF; color: #1A1A1A; border: 1px solid #CCCCCC; border-radius: 10px; padding: 10px 14px; font-family: "Times New Roman"; font-size: 13px; }
+QComboBox::drop-down { border: none; width: 28px; }
+QComboBox QAbstractItemView { background-color: #FFFFFF; color: #1A1A1A; selection-background-color: #7A9CC6; selection-color: #FFFFFF; border: 1px solid #CCCCCC; }
+QDateEdit { background-color: #FFFFFF; color: #1A1A1A; border: 1px solid #CCCCCC; border-radius: 10px; padding: 10px 14px; font-family: "Times New Roman"; font-size: 13px; }
+QDateEdit::drop-down { border: none; width: 24px; }
+QTableWidget { background-color: #FFFFFF; color: #1A1A1A; gridline-color: #EEEEEE; font-family: "Times New Roman"; font-size: 13px; border: 1px solid #CCCCCC; border-radius: 12px; }
+QTableWidget::item { color: #1A1A1A; background-color: #FFFFFF; padding: 8px; }
+QTableWidget::item:selected { background-color: #7A9CC6; color: #FFFFFF; }
+QHeaderView::section { background-color: #2F5C8F; color: #FFFFFF; padding: 10px; border: none; font-family: "Times New Roman"; font-size: 13px; font-weight: bold; }
+QStackedWidget > QWidget { background-color: #EEF3F8; }
+QListWidget { background-color: #FFFFFF; color: #1A1A1A; border: 1px solid #CCCCCC; border-radius: 10px; font-family: "Times New Roman"; font-size: 13px; padding: 4px; }
+QListWidget::item { padding: 8px; border-radius: 6px; }
+QListWidget::item:selected { background-color: #7A9CC6; color: #FFFFFF; }
+QListWidget::item:hover { background-color: #E8EFF8; }
+QPushButton { outline: none; }
+QPushButton:focus { outline: none; }</string>
+  </property>
+  <widget class="QWidget" name="centralwidget">
+   <layout class="QHBoxLayout" name="mainLayout">
+    <property name="leftMargin"><number>0</number></property>
+    <property name="topMargin"><number>0</number></property>
+    <property name="rightMargin"><number>0</number></property>
+    <property name="bottomMargin"><number>0</number></property>
+    <property name="spacing"><number>0</number></property>
+
+    <item>
+     <widget class="QFrame" name="sidebar">
+      <property name="minimumSize"><size><width>220</width><height>0</height></size></property>
+      <property name="maximumSize"><size><width>220</width><height>16777215</height></size></property>
+      <property name="styleSheet">
+       <string notr="true">QFrame#sidebar { background-color: #2F5C8F; border: none; }
+QLabel { color: #FFFFFF; background-color: transparent; }
+QPushButton { color: #FFFFFF; background-color: transparent; border: none; text-align: left; padding: 12px 20px; font-family: "Times New Roman"; font-size: 14px; border-radius: 10px; }
+QPushButton:hover { background-color: #1E4470; }
+QPushButton:checked { background-color: #1E4470; font-weight: bold; }
+QPushButton:focus { outline: none; }</string>
+      </property>
+      <layout class="QVBoxLayout" name="sidebarLayout">
+       <property name="leftMargin"><number>16</number></property>
+       <property name="topMargin"><number>24</number></property>
+       <property name="rightMargin"><number>16</number></property>
+       <property name="bottomMargin"><number>20</number></property>
+       <property name="spacing"><number>6</number></property>
+
+       <item><widget class="QLabel" name="avatarLabel">
+        <property name="minimumSize"><size><width>70</width><height>70</height></size></property>
+        <property name="maximumSize"><size><width>70</width><height>70</height></size></property>
+        <property name="styleSheet"><string notr="true">background-color: #FFFFFF; color: #2F5C8F; border-radius: 35px; font-size: 28px; font-weight: bold;</string></property>
+        <property name="text"><string>В</string></property>
+        <property name="alignment"><set>Qt::AlignCenter</set></property>
+       </widget></item>
+
+       <item><widget class="QLabel" name="nameLabel">
+        <property name="font"><font><family>Times New Roman</family><pointsize>12</pointsize><bold>true</bold></font></property>
+        <property name="text"><string>ФИО врача</string></property>
+        <property name="alignment"><set>Qt::AlignCenter</set></property>
+        <property name="wordWrap"><bool>true</bool></property>
+       </widget></item>
+
+       <item><widget class="QLabel" name="roleLabel">
+        <property name="font"><font><family>Times New Roman</family><pointsize>9</pointsize></font></property>
+        <property name="styleSheet"><string notr="true">color: #D6E3F3;</string></property>
+        <property name="text"><string>Врач-специалист</string></property>
+        <property name="alignment"><set>Qt::AlignCenter</set></property>
+       </widget></item>
+
+       <item><spacer name="sidebarTopSpacer">
+        <property name="orientation"><enum>Qt::Vertical</enum></property>
+        <property name="sizeHint" stdset="0"><size><width>20</width><height>20</height></size></property>
+       </spacer></item>
+
+       <item><widget class="QPushButton" name="navHome">
+        <property name="text"><string>  Главная</string></property>
+        <property name="checkable"><bool>true</bool></property>
+        <property name="checked"><bool>true</bool></property>
+       </widget></item>
+       <item><widget class="QPushButton" name="navPatients">
+        <property name="text"><string>  Мои пациенты</string></property>
+        <property name="checkable"><bool>true</bool></property>
+       </widget></item>
+       <item><widget class="QPushButton" name="navAddPatient">
+        <property name="text"><string>  Добавить пациента</string></property>
+        <property name="checkable"><bool>true</bool></property>
+       </widget></item>
+       <item><widget class="QPushButton" name="navPrescriptions">
+        <property name="text"><string>  Назначения</string></property>
+        <property name="checkable"><bool>true</bool></property>
+       </widget></item>
+       <item><widget class="QPushButton" name="navDiaries">
+        <property name="text"><string>  Дневники</string></property>
+        <property name="checkable"><bool>true</bool></property>
+       </widget></item>
+       <item><widget class="QPushButton" name="navHelp">
+        <property name="text"><string>  Помощь (F1)</string></property>
+        <property name="checkable"><bool>true</bool></property>
+       </widget></item>
+
+       <item><spacer name="sidebarBottomSpacer">
+        <property name="orientation"><enum>Qt::Vertical</enum></property>
+        <property name="sizeHint" stdset="0"><size><width>20</width><height>20</height></size></property>
+       </spacer></item>
+      </layout>
+     </widget>
+    </item>
+
+    <item>
+     <widget class="QWidget" name="contentWidget">
+      <layout class="QVBoxLayout" name="contentLayout">
+       <property name="leftMargin"><number>30</number></property>
+       <property name="topMargin"><number>24</number></property>
+       <property name="rightMargin"><number>30</number></property>
+       <property name="bottomMargin"><number>24</number></property>
+       <property name="spacing"><number>20</number></property>
+
+       <item>
+        <layout class="QHBoxLayout" name="topBar">
+         <item><widget class="QLabel" name="pageTitleLabel">
+          <property name="font"><font><family>Times New Roman</family><pointsize>20</pointsize><bold>true</bold></font></property>
+          <property name="styleSheet"><string notr="true">color: #2F5C8F; background-color: transparent;</string></property>
+          <property name="text"><string>Главная</string></property>
+         </widget></item>
+         <item><spacer name="topSpacer1">
+          <property name="orientation"><enum>Qt::Horizontal</enum></property>
+          <property name="sizeHint" stdset="0"><size><width>40</width><height>20</height></size></property>
+         </spacer></item>
+         <item><widget class="QPushButton" name="logoutBtn">
+          <property name="minimumSize"><size><width>110</width><height>38</height></size></property>
+          <property name="font"><font><family>Times New Roman</family><pointsize>12</pointsize></font></property>
+          <property name="styleSheet">
+           <string notr="true">QPushButton { background-color: #C0504D; color: #FFFFFF; border: none; border-radius: 10px; font-weight: bold; }
+QPushButton:hover { background-color: #A0403D; }
+QPushButton:pressed { background-color: #803533; }</string>
+          </property>
+          <property name="text"><string>Выйти</string></property>
+         </widget></item>
+        </layout>
+       </item>
+
+       <item>
+        <widget class="QStackedWidget" name="pages">
+         <property name="styleSheet"><string notr="true">QStackedWidget { background: transparent; border: none; }
+QStackedWidget > QWidget { background-color: #EEF3F8; }</string></property>
+
+         <widget class="QWidget" name="homePage">
+          <layout class="QVBoxLayout" name="homePageLayout">
+           <property name="spacing"><number>16</number></property>
+
+           <item><widget class="QLabel" name="greetingLabel">
+            <property name="font"><font><family>Times New Roman</family><pointsize>18</pointsize><bold>true</bold></font></property>
+            <property name="text"><string>Добрый день!</string></property>
+           </widget></item>
+           <item><widget class="QLabel" name="subGreetingLabel">
+            <property name="font"><font><family>Times New Roman</family><pointsize>11</pointsize></font></property>
+            <property name="styleSheet"><string notr="true">color: #666666;</string></property>
+            <property name="text"><string>Управляйте пациентами и назначениями</string></property>
+           </widget></item>
+
+           <item><widget class="QFrame" name="cardPatients">
+            <property name="minimumSize"><size><width>0</width><height>170</height></size></property>
+            <property name="styleSheet">
+             <string notr="true">QFrame#cardPatients { background-color: #FFFFFF; border: none; border-radius: 16px; }
+QFrame#cardPatients QLabel { color: #1A1A1A; background: transparent; }</string>
+            </property>
+            <layout class="QVBoxLayout" name="cardPatientsLayout">
+             <property name="leftMargin"><number>24</number></property>
+             <property name="topMargin"><number>18</number></property>
+             <property name="rightMargin"><number>24</number></property>
+             <property name="bottomMargin"><number>18</number></property>
+             <property name="spacing"><number>10</number></property>
+
+             <item><layout class="QHBoxLayout" name="patientsHead">
+              <item><widget class="QLabel">
+               <property name="font"><font><family>Times New Roman</family><pointsize>14</pointsize><bold>true</bold></font></property>
+               <property name="styleSheet"><string notr="true">color: #2F5C8F;</string></property>
+               <property name="text"><string>МОИ ПАЦИЕНТЫ</string></property>
+              </widget></item>
+              <item><spacer name="patientsHeadSpacer">
+               <property name="orientation"><enum>Qt::Horizontal</enum></property>
+               <property name="sizeHint" stdset="0"><size><width>40</width><height>20</height></size></property>
+              </spacer></item>
+              <item><widget class="QLabel" name="patientsCountLabel">
+               <property name="font"><font><family>Times New Roman</family><pointsize>11</pointsize></font></property>
+               <property name="styleSheet"><string notr="true">color: #7A9CC6;</string></property>
+               <property name="text"><string>0 пациентов</string></property>
+              </widget></item>
+             </layout></item>
+
+             <item><widget class="QLabel" name="patientsListLabel">
+              <property name="font"><font><family>Times New Roman</family><pointsize>12</pointsize></font></property>
+              <property name="text"><string>У вас пока нет прикреплённых пациентов</string></property>
+              <property name="wordWrap"><bool>true</bool></property>
+             </widget></item>
+
+             <item><widget class="QPushButton" name="btnOpenPatientsFromHome">
+              <property name="minimumSize"><size><width>180</width><height>38</height></size></property>
+              <property name="maximumSize"><size><width>180</width><height>38</height></size></property>
+              <property name="styleSheet"><string notr="true">QPushButton { background-color: #2F5C8F; color: #FFFFFF; border: none; border-radius: 10px; font-family: "Times New Roman"; font-size: 13px; }
+QPushButton:hover { background-color: #1E4470; }</string></property>
+              <property name="text"><string>Посмотреть пациентов</string></property>
+             </widget></item>
+            </layout>
+           </widget></item>
+
+           <item><layout class="QHBoxLayout" name="cardsRow">
+            <property name="spacing"><number>16</number></property>
+            <item><widget class="QFrame" name="cardPrescrHome">
+             <property name="minimumSize"><size><width>0</width><height>150</height></size></property>
+             <property name="styleSheet">
+              <string notr="true">QFrame#cardPrescrHome { background-color: #FFFFFF; border: none; border-radius: 16px; }
+QFrame#cardPrescrHome QLabel { color: #1A1A1A; background: transparent; }</string>
+             </property>
+             <layout class="QVBoxLayout" name="cardPrescrHomeLayout">
+              <property name="leftMargin"><number>22</number></property>
+              <property name="topMargin"><number>18</number></property>
+              <property name="rightMargin"><number>22</number></property>
+              <property name="bottomMargin"><number>18</number></property>
+              <item><widget class="QLabel">
+               <property name="font"><font><family>Times New Roman</family><pointsize>14</pointsize><bold>true</bold></font></property>
+               <property name="styleSheet"><string notr="true">color: #2F5C8F;</string></property>
+               <property name="text"><string>НАЗНАЧЕНИЯ</string></property>
+              </widget></item>
+              <item><widget class="QLabel">
+               <property name="font"><font><family>Times New Roman</family><pointsize>11</pointsize></font></property>
+               <property name="text"><string>Создавайте и корректируйте схемы лечения</string></property>
+               <property name="wordWrap"><bool>true</bool></property>
+              </widget></item>
+              <item><widget class="QPushButton" name="btnOpenPrescrFromHome">
+               <property name="minimumHeight"><number>36</number></property>
+               <property name="maximumSize"><size><width>160</width><height>36</height></size></property>
+               <property name="styleSheet"><string notr="true">QPushButton { background-color: #7A9CC6; color: #FFFFFF; border: none; border-radius: 10px; font-family: "Times New Roman"; font-size: 13px; }
+QPushButton:hover { background-color: #6A8CB6; }</string></property>
+               <property name="text"><string>Открыть</string></property>
+              </widget></item>
+             </layout>
+            </widget></item>
+            <item><widget class="QFrame" name="cardDiaryHome">
+             <property name="minimumSize"><size><width>0</width><height>150</height></size></property>
+             <property name="styleSheet">
+              <string notr="true">QFrame#cardDiaryHome { background-color: #FFFFFF; border: none; border-radius: 16px; }
+QFrame#cardDiaryHome QLabel { color: #1A1A1A; background: transparent; }</string>
+             </property>
+             <layout class="QVBoxLayout" name="cardDiaryHomeLayout">
+              <property name="leftMargin"><number>22</number></property>
+              <property name="topMargin"><number>18</number></property>
+              <property name="rightMargin"><number>22</number></property>
+              <property name="bottomMargin"><number>18</number></property>
+              <item><widget class="QLabel">
+               <property name="font"><font><family>Times New Roman</family><pointsize>14</pointsize><bold>true</bold></font></property>
+               <property name="styleSheet"><string notr="true">color: #2F5C8F;</string></property>
+               <property name="text"><string>ДНЕВНИКИ ПАЦИЕНТОВ</string></property>
+              </widget></item>
+              <item><widget class="QLabel">
+               <property name="font"><font><family>Times New Roman</family><pointsize>11</pointsize></font></property>
+               <property name="text"><string>Просматривайте записи самочувствия и показатели</string></property>
+               <property name="wordWrap"><bool>true</bool></property>
+              </widget></item>
+              <item><widget class="QPushButton" name="btnOpenDiariesFromHome">
+               <property name="minimumHeight"><number>36</number></property>
+               <property name="maximumSize"><size><width>160</width><height>36</height></size></property>
+               <property name="styleSheet"><string notr="true">QPushButton { background-color: #7A9CC6; color: #FFFFFF; border: none; border-radius: 10px; font-family: "Times New Roman"; font-size: 13px; }
+QPushButton:hover { background-color: #6A8CB6; }</string></property>
+               <property name="text"><string>Открыть</string></property>
+              </widget></item>
+             </layout>
+            </widget></item>
+           </layout></item>
+
+           <item><spacer name="homeBottomSpacer">
+            <property name="orientation"><enum>Qt::Vertical</enum></property>
+            <property name="sizeHint" stdset="0"><size><width>20</width><height>20</height></size></property>
+           </spacer></item>
+          </layout>
+         </widget>
+
+         <widget class="QWidget" name="patientsPage">
+          <layout class="QVBoxLayout" name="patientsPageLayout">
+           <item><widget class="QTableWidget" name="patientsTable"/></item>
+          </layout>
+         </widget>
+
+         <widget class="QWidget" name="addPatientPage">
+          <layout class="QVBoxLayout" name="addPatientLayout">
+           <property name="spacing"><number>14</number></property>
+
+           <item><widget class="QLabel">
+            <property name="font"><font><family>Times New Roman</family><pointsize>13</pointsize><bold>true</bold></font></property>
+            <property name="styleSheet"><string notr="true">color: #2F5C8F;</string></property>
+            <property name="text"><string>Заполните данные нового пациента</string></property>
+           </widget></item>
+
+           <item><widget class="QLineEdit" name="newPatientFullName">
+            <property name="minimumHeight"><number>42</number></property>
+            <property name="placeholderText"><string>ФИО пациента</string></property>
+           </widget></item>
+
+           <item>
+            <layout class="QHBoxLayout" name="genderRow">
+             <item><widget class="QLabel">
+              <property name="text"><string>Пол:</string></property>
+              <property name="font"><font><family>Times New Roman</family><pointsize>12</pointsize></font></property>
+             </widget></item>
+             <item><widget class="QComboBox" name="newPatientGender">
+              <property name="minimumHeight"><number>42</number></property>
+              <property name="minimumWidth"><number>200</number></property>
+              <item><property name="text"><string>мужской</string></property></item>
+              <item><property name="text"><string>женский</string></property></item>
+             </widget></item>
+             <item><spacer name="genderSpacer">
+              <property name="orientation"><enum>Qt::Horizontal</enum></property>
+              <property name="sizeHint" stdset="0"><size><width>40</width><height>20</height></size></property>
+             </spacer></item>
+            </layout>
+           </item>
+
+           <item><widget class="QLineEdit" name="newPatientPolicy">
+            <property name="minimumHeight"><number>42</number></property>
+            <property name="placeholderText"><string>Номер полиса</string></property>
+           </widget></item>
+
+           <item><widget class="QLineEdit" name="newPatientPhone">
+            <property name="minimumHeight"><number>42</number></property>
+            <property name="placeholderText"><string>Телефон</string></property>
+           </widget></item>
+
+           <item>
+            <layout class="QHBoxLayout" name="birthRow">
+             <item><widget class="QLabel"><property name="text"><string>Дата рождения:</string></property></widget></item>
+             <item><widget class="QDateEdit" name="newPatientBirthDate">
+              <property name="minimumHeight"><number>42</number></property>
+              <property name="displayFormat"><string>dd.MM.yyyy</string></property>
+              <property name="calendarPopup"><bool>true</bool></property>
+             </widget></item>
+             <item><spacer name="birthSpacer">
+              <property name="orientation"><enum>Qt::Horizontal</enum></property>
+              <property name="sizeHint" stdset="0"><size><width>40</width><height>20</height></size></property>
+             </spacer></item>
+            </layout>
+           </item>
+
+           <item>
+            <layout class="QHBoxLayout" name="addPatientBtnRow">
+             <item><spacer name="addPatientBtnSpacer">
+              <property name="orientation"><enum>Qt::Horizontal</enum></property>
+              <property name="sizeHint" stdset="0"><size><width>40</width><height>20</height></size></property>
+             </spacer></item>
+             <item><widget class="QPushButton" name="createPatientBtn">
+              <property name="minimumSize"><size><width>260</width><height>46</height></size></property>
+              <property name="styleSheet"><string notr="true">QPushButton { background-color: #2F5C8F; color: #FFFFFF; border: none; border-radius: 10px; font-family: "Times New Roman"; font-size: 14px; font-weight: bold; }
+QPushButton:hover { background-color: #1E4470; }</string></property>
+              <property name="text"><string>Создать пациента</string></property>
+             </widget></item>
+            </layout>
+           </item>
+
+           <item><spacer name="addPatientBottomSpacer">
+            <property name="orientation"><enum>Qt::Vertical</enum></property>
+            <property name="sizeHint" stdset="0"><size><width>20</width><height>20</height></size></property>
+           </spacer></item>
+          </layout>
+         </widget>
+
+         <widget class="QWidget" name="prescrPage">
+          <layout class="QVBoxLayout" name="prescrPageLayout">
+           <property name="spacing"><number>12</number></property>
+
+           <item><widget class="QLabel">
+            <property name="font"><font><family>Times New Roman</family><pointsize>13</pointsize><bold>true</bold></font></property>
+            <property name="styleSheet"><string notr="true">color: #2F5C8F;</string></property>
+            <property name="text"><string>Новое назначение</string></property>
+           </widget></item>
+
+           <item><widget class="QComboBox" name="patientCombo">
+            <property name="minimumHeight"><number>42</number></property>
+           </widget></item>
+
+           <item>
+            <layout class="QHBoxLayout" name="medRow1">
+             <property name="spacing"><number>8</number></property>
+             <item><widget class="QLineEdit" name="medicationSearch">
+              <property name="minimumHeight"><number>42</number></property>
+              <property name="placeholderText"><string>Поиск препарата или введите новый</string></property>
+             </widget></item>
+             <item><widget class="QPushButton" name="addMedicationBtn">
+              <property name="minimumSize"><size><width>170</width><height>42</height></size></property>
+              <property name="styleSheet"><string notr="true">QPushButton { background-color: #7A9CC6; color: white; border: none; border-radius: 10px; font-family: "Times New Roman"; font-size: 13px; }
+QPushButton:hover { background-color: #6A8CB6; }</string></property>
+              <property name="text"><string>+ Добавить препарат</string></property>
+             </widget></item>
+            </layout>
+           </item>
+
+           <item><widget class="QListWidget" name="medicationList">
+            <property name="maximumHeight"><number>140</number></property>
+           </widget></item>
+
+           <item>
+            <layout class="QHBoxLayout" name="prescrFormRow1">
+             <property name="spacing"><number>12</number></property>
+             <item><widget class="QLineEdit" name="dosageLine">
+              <property name="minimumHeight"><number>42</number></property>
+              <property name="placeholderText"><string>Дозировка (например, 10 мг)</string></property>
+             </widget></item>
+             <item><widget class="QLineEdit" name="freqLine">
+              <property name="minimumHeight"><number>42</number></property>
+              <property name="placeholderText"><string>Кратность (например, 2 раза в день)</string></property>
+             </widget></item>
+            </layout>
+           </item>
+
+           <item>
+            <layout class="QHBoxLayout" name="prescrDateRow">
+             <property name="spacing"><number>12</number></property>
+             <item><widget class="QLabel"><property name="text"><string>Начало:</string></property></widget></item>
+             <item><widget class="QDateEdit" name="startDate"><property name="minimumHeight"><number>42</number></property></widget></item>
+             <item><widget class="QLabel"><property name="text"><string>Конец:</string></property></widget></item>
+             <item><widget class="QDateEdit" name="endDate"><property name="minimumHeight"><number>42</number></property></widget></item>
+             <item><spacer name="prescrDateSpacer">
+              <property name="orientation"><enum>Qt::Horizontal</enum></property>
+              <property name="sizeHint" stdset="0"><size><width>40</width><height>20</height></size></property>
+             </spacer></item>
+            </layout>
+           </item>
+
+           <item><widget class="QTextEdit" name="commentText">
+            <property name="maximumHeight"><number>60</number></property>
+            <property name="placeholderText"><string>Комментарий к назначению</string></property>
+           </widget></item>
+
+           <item>
+            <layout class="QHBoxLayout" name="prescrBtnRow">
+             <item><spacer name="prescrBtnSpacer">
+              <property name="orientation"><enum>Qt::Horizontal</enum></property>
+              <property name="sizeHint" stdset="0"><size><width>40</width><height>20</height></size></property>
+             </spacer></item>
+             <item><widget class="QPushButton" name="addPrescrBtn">
+              <property name="minimumSize"><size><width>240</width><height>44</height></size></property>
+              <property name="styleSheet"><string notr="true">QPushButton { background-color: #2F5C8F; color: #FFFFFF; border: none; border-radius: 10px; font-family: "Times New Roman"; font-size: 14px; font-weight: bold; }
+QPushButton:hover { background-color: #1E4470; }</string></property>
+              <property name="text"><string>Добавить назначение</string></property>
+             </widget></item>
+            </layout>
+           </item>
+
+           <item><spacer name="prescrBottomSpacer">
+            <property name="orientation"><enum>Qt::Vertical</enum></property>
+            <property name="sizeHint" stdset="0"><size><width>20</width><height>20</height></size></property>
+           </spacer></item>
+          </layout>
+         </widget>
+
+         <widget class="QWidget" name="diariesPage">
+          <layout class="QVBoxLayout" name="diariesPageLayout">
+           <property name="spacing"><number>12</number></property>
+
+           <item><widget class="QLabel">
+            <property name="font"><font><family>Times New Roman</family><pointsize>13</pointsize><bold>true</bold></font></property>
+            <property name="styleSheet"><string notr="true">color: #2F5C8F;</string></property>
+            <property name="text"><string>Выберите пациента, чтобы посмотреть его дневник</string></property>
+           </widget></item>
+
+           <item>
+            <layout class="QHBoxLayout" name="diaryTopRow">
+             <property name="spacing"><number>12</number></property>
+             <item><widget class="QComboBox" name="diaryPatientCombo">
+              <property name="minimumHeight"><number>42</number></property>
+              <property name="minimumWidth"><number>320</number></property>
+             </widget></item>
+             <item><widget class="QPushButton" name="viewDiaryBtn">
+              <property name="minimumSize"><size><width>200</width><height>42</height></size></property>
+              <property name="styleSheet"><string notr="true">QPushButton { background-color: #2F5C8F; color: #FFFFFF; border: none; border-radius: 10px; font-family: "Times New Roman"; font-size: 13px; }
+QPushButton:hover { background-color: #1E4470; }</string></property>
+              <property name="text"><string>Показать дневник</string></property>
+             </widget></item>
+             <item><spacer name="diaryTopSpacer">
+              <property name="orientation"><enum>Qt::Horizontal</enum></property>
+              <property name="sizeHint" stdset="0"><size><width>40</width><height>20</height></size></property>
+             </spacer></item>
+            </layout>
+           </item>
+
+           <item><widget class="QLabel" name="diarySummaryLabel">
+            <property name="font"><font><family>Times New Roman</family><pointsize>11</pointsize></font></property>
+            <property name="styleSheet"><string notr="true">color: #666666;</string></property>
+            <property name="text"><string>Записи не загружены</string></property>
+           </widget></item>
+
+           <item>
+            <widget class="QWidget" name="diaryListWidget">
+             <property name="minimumSize"><size><width>0</width><height>400</height></size></property>
+             <property name="sizePolicy"><sizepolicy hsizetype="Expanding" vsizetype="Expanding"><horstretch>0</horstretch><verstretch>1</verstretch></sizepolicy></property>
+             <property name="styleSheet"><string notr="true">background: transparent;</string></property>
+             <layout class="QVBoxLayout" name="diaryListLayout">
+              <property name="leftMargin"><number>0</number></property>
+              <property name="topMargin"><number>0</number></property>
+              <property name="rightMargin"><number>0</number></property>
+              <property name="bottomMargin"><number>0</number></property>
+              <property name="spacing"><number>12</number></property>
+             </layout>
+            </widget>
+           </item>
+          </layout>
+         </widget>
+
+         <widget class="QWidget" name="helpPage">
+          <layout class="QVBoxLayout" name="helpLayout">
+           <property name="spacing"><number>14</number></property>
+           <item><widget class="QLabel">
+            <property name="font"><font><family>Times New Roman</family><pointsize>18</pointsize><bold>true</bold></font></property>
+            <property name="styleSheet"><string notr="true">color: #2F5C8F;</string></property>
+            <property name="text"><string>Справка</string></property>
+           </widget></item>
+           <item><widget class="QTextEdit" name="helpText">
+            <property name="readOnly"><bool>true</bool></property>
+            <property name="styleSheet"><string notr="true">QTextEdit { background-color: #FFFFFF; color: #1A1A1A; border: 1px solid #CCCCCC; border-radius: 10px; padding: 16px; font-family: "Times New Roman"; font-size: 13px; }</string></property>
+            <property name="html"><string>&lt;h2 style="color:#2F5C8F;"&gt;Панель врача&lt;/h2&gt;&lt;p&gt;&lt;b&gt;Мои пациенты&lt;/b&gt; — список ваших пациентов.&lt;/p&gt;&lt;p&gt;&lt;b&gt;Добавить пациента&lt;/b&gt; — создайте пациента с ФИО, полом и данными.&lt;/p&gt;&lt;p&gt;&lt;b&gt;Назначения&lt;/b&gt; — поиск препарата или добавление нового.&lt;/p&gt;&lt;p&gt;&lt;b&gt;Дневники&lt;/b&gt; — записи самочувствия и постановка диагноза по МКБ-10.&lt;/p&gt;&lt;h3 style="color:#2F5C8F;"&gt;Горячие клавиши&lt;/h3&gt;&lt;p&gt;&lt;b&gt;F1&lt;/b&gt; — справка&lt;br&gt;&lt;b&gt;Ctrl+Q&lt;/b&gt; — выйти&lt;br&gt;&lt;b&gt;Ctrl+1…5&lt;/b&gt; — разделы&lt;/p&gt;</string></property>
+           </widget></item>
+          </layout>
+         </widget>
+
+        </widget>
+       </item>
+      </layout>
+     </widget>
+    </item>
+   </layout>
+  </widget>
+ </widget>
+ <resources/>
+ <connections/>
+</ui>
