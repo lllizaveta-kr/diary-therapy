@@ -70,6 +70,23 @@
 | **Git / GitHub** | Контроль версий |
 
 ---
+## 📸 Скриншоты
+
+### Авторизация
+![Авторизация](images/login.png)
+
+### Окно администратора — статистика
+![Админ статистика](images/admin_stats.png)
+
+### Окно администратора — управление пользователями
+![Админ пользователи](images/admin_users.png)
+
+### Окно врача
+![Врач](images/doctor.png)
+
+### Окно пациента
+![Пациент](images/patient.png)
+
 
 ## 🚀 Установка и запуск
 
@@ -78,3 +95,5 @@
 ```bash
 git clone https://github.com/lllizaveta-kr/diary-therapy.git
 cd diary-therapy
+
+
