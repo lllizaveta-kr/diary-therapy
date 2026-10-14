@@ -82,7 +82,7 @@ cd diary-therapy
 ```bash
 python -m venv .venv
 .venv\Scripts\activate
-pip install PySide6 mysql-connector-python
+pip install -r requirements.txt
 ```
 
 ### 3. Настроить подключение к БД
