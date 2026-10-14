@@ -1,20 +1,28 @@
-import random
 import hashlib
+import random
+
 import mysql.connector
-from PySide6.QtWidgets import (
-    QMainWindow, QLabel, QPushButton, QApplication, QWidget,
-)
-from PySide6.QtGui import QPixmap, QPainter, QColor, QPen
 from PySide6.QtCore import (
-    Qt, QTimer, QPropertyAnimation, QEasingCurve, QParallelAnimationGroup,
+    Qt,
+    QTimer,
+    QPropertyAnimation,
+    QEasingCurve,
+    QParallelAnimationGroup,
     Property,
 )
+from PySide6.QtGui import QPixmap, QPainter, QColor, QPen
+from PySide6.QtWidgets import (
+    QMainWindow,
+    QPushButton,
+    QApplication,
+    QWidget,
+)
 
+import theme
+from config import DB_CONFIG
+from path import images_path
 from ui_py.ui_login import Ui_LoginWindow
 from windows import msgbox as mb
-from config import DB_CONFIG
-import theme
-from path import images_path
 
 
 class Bubble(QWidget):
@@ -33,10 +41,7 @@ class Bubble(QWidget):
 
         self.vy = random.uniform(0.4, 1.4)
         self.vx = random.uniform(-0.25, 0.25)
-        self.move(
-            random.randint(0, max(1, area_w - size)),
-            area_h + random.randint(0, 200)
-        )
+        self.move(random.randint(0, max(1, area_w - size)), area_h + random.randint(0, 200))
         self.popping = False
 
     def _get_opacity(self):
@@ -70,8 +75,7 @@ class Bubble(QWidget):
         p.drawEllipse(2, 2, w - 4, h - 4)
         p.setBrush(shine)
         p.setPen(Qt.PenStyle.NoPen)
-        p.drawEllipse(int(w * 0.25), int(h * 0.18),
-                      int(w * 0.22), int(h * 0.18))
+        p.drawEllipse(int(w * 0.25), int(h * 0.18), int(w * 0.22), int(h * 0.18))
 
     def step(self):
         if self.popping:
@@ -141,14 +145,12 @@ class LoginWindow(QMainWindow):
         pix_left = QPixmap(images_path("bubbles_left.png"))
         if not pix_left.isNull():
             self.ui.leftBubblesLabel.setPixmap(
-                pix_left.scaledToHeight(560,
-                                        Qt.TransformationMode.SmoothTransformation)
+                pix_left.scaledToHeight(560, Qt.TransformationMode.SmoothTransformation)
             )
         pix_right = QPixmap(images_path("bubbles_right.png"))
         if not pix_right.isNull():
             self.ui.rightBubblesLabel.setPixmap(
-                pix_right.scaledToHeight(560,
-                                         Qt.TransformationMode.SmoothTransformation)
+                pix_right.scaledToHeight(560, Qt.TransformationMode.SmoothTransformation)
             )
 
         self.bubbles = []
@@ -209,32 +211,38 @@ class LoginWindow(QMainWindow):
             b.step()
 
     def on_forgot_password(self):
-        mb.info(self, "Восстановление пароля",
-                "Если вы забыли пароль — обратитесь к администратору.\n\n"
-                "Администратор может сбросить ваш пароль через раздел\n"
-                "«Управление пользователями» и выдать новый.")
+        mb.info(
+            self,
+            "Восстановление пароля",
+            "Если вы забыли пароль — обратитесь к администратору.\n\n"
+            "Администратор может сбросить ваш пароль через раздел\n"
+            "«Управление пользователями» и выдать новый.",
+        )
 
     def on_login(self):
         login = self.ui.loginLine.text().strip()
         password = self.ui.passwrdLine.text().strip()
 
         if not login and not password:
-            mb.warning(self, "Заполните форму",
-                       "Введите логин и пароль для входа.")
+            mb.warning(self, "Заполните форму", "Введите логин и пароль для входа.")
             self.ui.loginLine.setFocus()
             return
 
         if not login:
-            mb.warning(self, "Не указан логин",
-                       "Введите ваш логин.\n\n"
-                       "Если не знаете логин — обратитесь к администратору.")
+            mb.warning(
+                self,
+                "Не указан логин",
+                "Введите ваш логин.\n\n" "Если не знаете логин — обратитесь к администратору.",
+            )
             self.ui.loginLine.setFocus()
             return
 
         if not password:
-            mb.warning(self, "Не указан пароль",
-                       "Введите ваш пароль.\n\n"
-                       "Если забыли — нажмите «Забыли пароль?».")
+            mb.warning(
+                self,
+                "Не указан пароль",
+                "Введите ваш пароль.\n\n" "Если забыли — нажмите «Забыли пароль?».",
+            )
             self.ui.passwrdLine.setFocus()
             return
 
@@ -244,9 +252,9 @@ class LoginWindow(QMainWindow):
 
             # ДОБАВИЛИ u.id_user В ЗАПРОС
             query = """
-                SELECT u.id_user, u.password_hash, r.name_role, u.full_name 
-                FROM users u 
-                JOIN roles r ON u.id_role = r.id_role 
+                SELECT u.id_user, u.password_hash, r.name_role, u.full_name
+                FROM users u
+                JOIN roles r ON u.id_role = r.id_role
                 WHERE u.login = %s
             """
             cursor.execute(query, (login,))
@@ -260,51 +268,59 @@ class LoginWindow(QMainWindow):
                 db_hash = str(result[1]).strip()
                 role = result[2]
                 full_name = result[3]
-                input_hash = hashlib.sha256(password.encode('utf-8')).hexdigest()
+                input_hash = hashlib.sha256(password.encode("utf-8")).hexdigest()
 
                 if db_hash == input_hash:
                     # ПЕРЕДАЕМ id_user В СЛОВАРЕ
-                    user = {
-                        "id_user": id_user,
-                        "role": role,
-                        "full_name": full_name
-                    }
+                    user = {"id_user": id_user, "role": role, "full_name": full_name}
 
                     if role == "admin":
                         from windows.admin_window import AdminAnalyticsWindow
+
                         self.child_window = AdminAnalyticsWindow(user["full_name"], self)
                         self.child_window.show()
                         self.hide()
                     elif role == "doctor":
                         from windows.doctor_window import DoctorWindow
+
                         self.child_window = DoctorWindow(user, self)
                         self.child_window.show()
                         self.hide()
                     elif role == "patient":
                         from windows.patient_window import PatientWindow
+
                         self.child_window = PatientWindow(user, self)
                         self.child_window.show()
                         self.hide()
                     else:
-                        mb.warning(self, "Ошибка роли",
-                                   f"Пользователь имеет неизвестную роль: {role}.\n\n"
-                                   f"Обратитесь к администратору.")
+                        mb.warning(
+                            self,
+                            "Ошибка роли",
+                            f"Пользователь имеет неизвестную роль: {role}.\n\n"
+                            f"Обратитесь к администратору.",
+                        )
                     return
 
-            mb.warning(self, "Неверный логин или пароль",
-                       "Проверьте раскладку клавиатуры и регистр букв.\n\n"
-                       "Если забыли пароль — обратитесь к администратору.")
+            mb.warning(
+                self,
+                "Неверный логин или пароль",
+                "Проверьте раскладку клавиатуры и регистр букв.\n\n"
+                "Если забыли пароль — обратитесь к администратору.",
+            )
             self.ui.passwrdLine.selectAll()
             self.ui.passwrdLine.setFocus()
 
         except mysql.connector.Error as err:
-            mb.critical(self, "Нет связи с базой данных",
-                        f"Приложение не может подключиться к MySQL.\n\n"
-                        f"Возможные причины:\n"
-                        f"• Сервер MySQL не запущен\n"
-                        f"• Неверный пароль в config.py\n"
-                        f"• База данных не создана\n\n"
-                        f"Техническая информация:\n{str(err)[:100]}")
+            mb.critical(
+                self,
+                "Нет связи с базой данных",
+                f"Приложение не может подключиться к MySQL.\n\n"
+                f"Возможные причины:\n"
+                f"• Сервер MySQL не запущен\n"
+                f"• Неверный пароль в config.py\n"
+                f"• База данных не создана\n\n"
+                f"Техническая информация:\n{str(err)[:100]}",
+            )
 
     def return_from_child(self):
         self.ui.loginLine.clear()

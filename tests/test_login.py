@@ -1,12 +1,14 @@
 # test_login.py
 import hashlib
+
 import mysql.connector
+
 from config import DB_CONFIG
 
 
 def hash_password(password: str) -> str:
     """Хеширует пароль по алгоритму SHA-256"""
-    return hashlib.sha256(password.encode('utf-8')).hexdigest()
+    return hashlib.sha256(password.encode("utf-8")).hexdigest()
 
 
 def authenticate(login: str, password: str):
@@ -16,9 +18,9 @@ def authenticate(login: str, password: str):
         cursor = conn.cursor()
 
         query = """
-            SELECT u.password_hash, r.name_role 
-            FROM users u 
-            JOIN roles r ON u.id_role = r.id_role 
+            SELECT u.password_hash, r.name_role
+            FROM users u
+            JOIN roles r ON u.id_role = r.id_role
             WHERE u.login = %s
         """
         cursor.execute(query, (login.strip(),))

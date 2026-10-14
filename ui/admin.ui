@@ -1,272 +1,660 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <ui version="4.0">
- <class>AdminAnalyticsWindow</class>
- <widget class="QMainWindow" name="AdminAnalyticsWindow">
-  <property name="geometry">
-   <rect><x>0</x><y>0</y><width>1280</width><height>820</height></rect>
-  </property>
-  <property name="windowTitle"><string>Окно администратора</string></property>
-  <property name="styleSheet">
-   <string notr="true">QMainWindow { background-color: #EEF3F8; }
-QLabel { color: #1A1A1A; background-color: transparent; }
-QLineEdit { background-color: #FFFFFF; color: #1A1A1A; border: 1px solid #CCCCCC; border-radius: 10px; padding: 10px 14px; font-family: "Times New Roman"; font-size: 13px; }
-QLineEdit::placeholder { color: #999999; }
-QLineEdit:focus { border: 2px solid #2F5C8F; }
-QComboBox { background-color: #FFFFFF; color: #1A1A1A; border: 1px solid #CCCCCC; border-radius: 10px; padding: 10px 14px; font-family: "Times New Roman"; font-size: 13px; }
-QComboBox::drop-down { border: none; width: 28px; }
-QComboBox QAbstractItemView { background-color: #FFFFFF; color: #1A1A1A; selection-background-color: #7A9CC6; selection-color: #FFFFFF; border: 1px solid #CCCCCC; }
-QTableWidget { background-color: #FFFFFF; color: #1A1A1A; gridline-color: #EEEEEE; font-family: "Times New Roman"; font-size: 13px; border: 1px solid #CCCCCC; border-radius: 12px; }
-QTableWidget::item { color: #1A1A1A; background-color: #FFFFFF; padding: 8px; }
-QTableWidget::item:selected { background-color: #7A9CC6; color: #FFFFFF; }
-QHeaderView::section { background-color: #2F5C8F; color: #FFFFFF; padding: 10px; border: none; font-family: "Times New Roman"; font-size: 13px; font-weight: bold; }
-QTabWidget::pane { border: none; background: transparent; }
-QTabBar::tab { background: #D6E3F3; color: #1A1A1A; padding: 10px 24px; margin-right: 4px; border-top-left-radius: 10px; border-top-right-radius: 10px; font-family: "Times New Roman"; font-size: 13px; }
-QTabBar::tab:selected { background: #2F5C8F; color: #FFFFFF; font-weight: bold; }
-QPushButton { outline: none; }
-QPushButton:focus { outline: none; }</string>
-  </property>
-  <widget class="QWidget" name="centralwidget">
-   <layout class="QVBoxLayout" name="mainLayout">
-    <property name="leftMargin"><number>24</number></property>
-    <property name="topMargin"><number>20</number></property>
-    <property name="rightMargin"><number>24</number></property>
-    <property name="bottomMargin"><number>14</number></property>
-    <property name="spacing"><number>10</number></property>
+    <class>AdminAnalyticsWindow</class>
+    <widget class="QMainWindow" name="AdminAnalyticsWindow">
+        <property name="geometry">
+            <rect>
+                <x>0</x>
+                <y>0</y>
+                <width>1280</width>
+                <height>820</height>
+            </rect>
+        </property>
+        <property name="windowTitle">
+            <string>Окно администратора</string>
+        </property>
+        <property name="styleSheet">
+            <string notr="true">QMainWindow { background-color: #EEF3F8; }
+                QLabel { color: #1A1A1A; background-color: transparent; }
+                QLineEdit { background-color: #FFFFFF; color: #1A1A1A; border: 1px solid #CCCCCC; border-radius: 10px;
+                padding: 10px 14px; font-family: "Times New Roman"; font-size: 13px; }
+                QLineEdit::placeholder { color: #999999; }
+                QLineEdit:focus { border: 2px solid #2F5C8F; }
+                QComboBox { background-color: #FFFFFF; color: #1A1A1A; border: 1px solid #CCCCCC; border-radius: 10px;
+                padding: 10px 14px; font-family: "Times New Roman"; font-size: 13px; }
+                QComboBox::drop-down { border: none; width: 28px; }
+                QComboBox QAbstractItemView { background-color: #FFFFFF; color: #1A1A1A; selection-background-color:
+                #7A9CC6; selection-color: #FFFFFF; border: 1px solid #CCCCCC; }
+                QTableWidget { background-color: #FFFFFF; color: #1A1A1A; gridline-color: #EEEEEE; font-family: "Times
+                New Roman"; font-size: 13px; border: 1px solid #CCCCCC; border-radius: 12px; }
+                QTableWidget::item { color: #1A1A1A; background-color: #FFFFFF; padding: 8px; }
+                QTableWidget::item:selected { background-color: #7A9CC6; color: #FFFFFF; }
+                QHeaderView::section { background-color: #2F5C8F; color: #FFFFFF; padding: 10px; border: none;
+                font-family: "Times New Roman"; font-size: 13px; font-weight: bold; }
+                QTabWidget::pane { border: none; background: transparent; }
+                QTabBar::tab { background: #D6E3F3; color: #1A1A1A; padding: 10px 24px; margin-right: 4px;
+                border-top-left-radius: 10px; border-top-right-radius: 10px; font-family: "Times New Roman"; font-size:
+                13px; }
+                QTabBar::tab:selected { background: #2F5C8F; color: #FFFFFF; font-weight: bold; }
+                QPushButton { outline: none; }
+                QPushButton:focus { outline: none; }
+            </string>
+        </property>
+        <widget class="QWidget" name="centralwidget">
+            <layout class="QVBoxLayout" name="mainLayout">
+                <property name="leftMargin">
+                    <number>24</number>
+                </property>
+                <property name="topMargin">
+                    <number>20</number>
+                </property>
+                <property name="rightMargin">
+                    <number>24</number>
+                </property>
+                <property name="bottomMargin">
+                    <number>14</number>
+                </property>
+                <property name="spacing">
+                    <number>10</number>
+                </property>
 
-    <item>
-     <layout class="QHBoxLayout" name="topBar">
-      <item><widget class="QLabel" name="titleLabel">
-       <property name="font"><font><family>Times New Roman</family><pointsize>22</pointsize><bold>true</bold></font></property>
-       <property name="styleSheet"><string notr="true">color: #2F5C8F; background: transparent;</string></property>
-       <property name="text"><string>Панель администратора</string></property>
-      </widget></item>
-      <item><spacer name="topSpacer1">
-       <property name="orientation"><enum>Qt::Horizontal</enum></property>
-       <property name="sizeHint" stdset="0"><size><width>40</width><height>20</height></size></property>
-      </spacer></item>
-      <item><widget class="QPushButton" name="logoutBtn">
-       <property name="minimumSize"><size><width>110</width><height>38</height></size></property>
-       <property name="font"><font><family>Times New Roman</family><pointsize>12</pointsize></font></property>
-       <property name="styleSheet"><string notr="true">QPushButton { background-color: #C0504D; color: #FFFFFF; border: none; border-radius: 10px; font-weight: bold; }
-QPushButton:hover { background-color: #A0403D; }
-QPushButton:pressed { background-color: #803533; }</string></property>
-       <property name="text"><string>Выйти</string></property>
-      </widget></item>
-     </layout>
-    </item>
+                <item>
+                    <layout class="QHBoxLayout" name="topBar">
+                        <item>
+                            <widget class="QLabel" name="titleLabel">
+                                <property name="font">
+                                    <font>
+                                        <family>Times New Roman</family>
+                                        <pointsize>22</pointsize>
+                                        <bold>true</bold>
+                                    </font>
+                                </property>
+                                <property name="styleSheet">
+                                    <string notr="true">color: #2F5C8F; background: transparent;</string>
+                                </property>
+                                <property name="text">
+                                    <string>Панель администратора</string>
+                                </property>
+                            </widget>
+                        </item>
+                        <item>
+                            <spacer name="topSpacer1">
+                                <property name="orientation">
+                                    <enum>Qt::Horizontal</enum>
+                                </property>
+                                <property name="sizeHint" stdset="0">
+                                    <size>
+                                        <width>40</width>
+                                        <height>20</height>
+                                    </size>
+                                </property>
+                            </spacer>
+                        </item>
+                        <item>
+                            <widget class="QPushButton" name="logoutBtn">
+                                <property name="minimumSize">
+                                    <size>
+                                        <width>110</width>
+                                        <height>38</height>
+                                    </size>
+                                </property>
+                                <property name="font">
+                                    <font>
+                                        <family>Times New Roman</family>
+                                        <pointsize>12</pointsize>
+                                    </font>
+                                </property>
+                                <property name="styleSheet">
+                                    <string notr="true">QPushButton { background-color: #C0504D; color: #FFFFFF; border:
+                                        none; border-radius: 10px; font-weight: bold; }
+                                        QPushButton:hover { background-color: #A0403D; }
+                                        QPushButton:pressed { background-color: #803533; }
+                                    </string>
+                                </property>
+                                <property name="text">
+                                    <string>Выйти</string>
+                                </property>
+                            </widget>
+                        </item>
+                    </layout>
+                </item>
 
-    <item><widget class="QLabel" name="subtitleLabel">
-     <property name="font"><font><family>Times New Roman</family><pointsize>11</pointsize></font></property>
-     <property name="styleSheet"><string notr="true">color: #666666; background: transparent;</string></property>
-     <property name="text"><string>Обзор ключевых метрик в реальном времени</string></property>
-    </widget></item>
+                <item>
+                    <widget class="QLabel" name="subtitleLabel">
+                        <property name="font">
+                            <font>
+                                <family>Times New Roman</family>
+                                <pointsize>11</pointsize>
+                            </font>
+                        </property>
+                        <property name="styleSheet">
+                            <string notr="true">color: #666666; background: transparent;</string>
+                        </property>
+                        <property name="text">
+                            <string>Обзор ключевых метрик в реальном времени</string>
+                        </property>
+                    </widget>
+                </item>
 
-    <item>
-     <widget class="QTabWidget" name="tabs">
+                <item>
+                    <widget class="QTabWidget" name="tabs">
 
-      <widget class="QWidget" name="tabAnalytics">
-       <attribute name="title"><string>Аналитика</string></attribute>
-       <layout class="QVBoxLayout" name="analyticsLayout">
-        <property name="spacing"><number>10</number></property>
-        <item>
-         <layout class="QGridLayout" name="chartsGridLayout">
-          <property name="horizontalSpacing"><number>20</number></property>
-          <property name="verticalSpacing"><number>10</number></property>
-          <item row="0" column="0">
-           <widget class="QFrame" name="barChartFrame">
-            <property name="minimumSize"><size><width>0</width><height>280</height></size></property>
-            <property name="styleSheet"><string notr="true">background-color: #FFFFFF; border-radius: 12px;</string></property>
-            <layout class="QVBoxLayout" name="barChartLayout">
-             <property name="leftMargin"><number>10</number></property>
-             <property name="topMargin"><number>10</number></property>
-             <property name="rightMargin"><number>10</number></property>
-             <property name="bottomMargin"><number>10</number></property>
+                        <widget class="QWidget" name="tabAnalytics">
+                            <attribute name="title">
+                                <string>Аналитика</string>
+                            </attribute>
+                            <layout class="QVBoxLayout" name="analyticsLayout">
+                                <property name="spacing">
+                                    <number>10</number>
+                                </property>
+                                <item>
+                                    <layout class="QGridLayout" name="chartsGridLayout">
+                                        <property name="horizontalSpacing">
+                                            <number>20</number>
+                                        </property>
+                                        <property name="verticalSpacing">
+                                            <number>10</number>
+                                        </property>
+                                        <item row="0" column="0">
+                                            <widget class="QFrame" name="barChartFrame">
+                                                <property name="minimumSize">
+                                                    <size>
+                                                        <width>0</width>
+                                                        <height>280</height>
+                                                    </size>
+                                                </property>
+                                                <property name="styleSheet">
+                                                    <string notr="true">background-color: #FFFFFF; border-radius:
+                                                        12px;
+                                                    </string>
+                                                </property>
+                                                <layout class="QVBoxLayout" name="barChartLayout">
+                                                    <property name="leftMargin">
+                                                        <number>10</number>
+                                                    </property>
+                                                    <property name="topMargin">
+                                                        <number>10</number>
+                                                    </property>
+                                                    <property name="rightMargin">
+                                                        <number>10</number>
+                                                    </property>
+                                                    <property name="bottomMargin">
+                                                        <number>10</number>
+                                                    </property>
+                                                </layout>
+                                            </widget>
+                                        </item>
+                                        <item row="0" column="1">
+                                            <widget class="QFrame" name="pieChartFrame">
+                                                <property name="minimumSize">
+                                                    <size>
+                                                        <width>0</width>
+                                                        <height>280</height>
+                                                    </size>
+                                                </property>
+                                                <property name="styleSheet">
+                                                    <string notr="true">background-color: #FFFFFF; border-radius:
+                                                        12px;
+                                                    </string>
+                                                </property>
+                                                <layout class="QVBoxLayout" name="pieChartLayout">
+                                                    <property name="leftMargin">
+                                                        <number>10</number>
+                                                    </property>
+                                                    <property name="topMargin">
+                                                        <number>10</number>
+                                                    </property>
+                                                    <property name="rightMargin">
+                                                        <number>10</number>
+                                                    </property>
+                                                    <property name="bottomMargin">
+                                                        <number>10</number>
+                                                    </property>
+                                                </layout>
+                                            </widget>
+                                        </item>
+                                        <item row="0" column="2">
+                                            <widget class="QFrame" name="lineChartFrame">
+                                                <property name="minimumSize">
+                                                    <size>
+                                                        <width>0</width>
+                                                        <height>280</height>
+                                                    </size>
+                                                </property>
+                                                <property name="styleSheet">
+                                                    <string notr="true">background-color: #FFFFFF; border-radius:
+                                                        12px;
+                                                    </string>
+                                                </property>
+                                                <layout class="QVBoxLayout" name="lineChartLayout">
+                                                    <property name="leftMargin">
+                                                        <number>10</number>
+                                                    </property>
+                                                    <property name="topMargin">
+                                                        <number>10</number>
+                                                    </property>
+                                                    <property name="rightMargin">
+                                                        <number>10</number>
+                                                    </property>
+                                                    <property name="bottomMargin">
+                                                        <number>10</number>
+                                                    </property>
+                                                </layout>
+                                            </widget>
+                                        </item>
+                                        <item row="1" column="0">
+                                            <widget class="QCheckBox" name="barChartCheckBox">
+                                                <property name="minimumSize">
+                                                    <size>
+                                                        <width>0</width>
+                                                        <height>35</height>
+                                                    </size>
+                                                </property>
+                                                <property name="font">
+                                                    <font>
+                                                        <family>Times New Roman</family>
+                                                        <pointsize>13</pointsize>
+                                                    </font>
+                                                </property>
+                                                <property name="styleSheet">
+                                                    <string notr="true">QCheckBox { color: #1A1A1A; spacing: 10px; }
+                                                        QCheckBox::indicator { width: 22px; height: 22px; border: 2px
+                                                        solid #2F5C8F; border-radius: 4px; background-color: #FFFFFF; }
+                                                        QCheckBox::indicator:checked { background-color: #2F5C8F; }
+                                                    </string>
+                                                </property>
+                                                <property name="text">
+                                                    <string>Выбрать столбчатую</string>
+                                                </property>
+                                            </widget>
+                                        </item>
+                                        <item row="1" column="1">
+                                            <widget class="QCheckBox" name="pieChartCheckBox">
+                                                <property name="minimumSize">
+                                                    <size>
+                                                        <width>0</width>
+                                                        <height>35</height>
+                                                    </size>
+                                                </property>
+                                                <property name="font">
+                                                    <font>
+                                                        <family>Times New Roman</family>
+                                                        <pointsize>13</pointsize>
+                                                    </font>
+                                                </property>
+                                                <property name="styleSheet">
+                                                    <string notr="true">QCheckBox { color: #1A1A1A; spacing: 10px; }
+                                                        QCheckBox::indicator { width: 22px; height: 22px; border: 2px
+                                                        solid #2F5C8F; border-radius: 4px; background-color: #FFFFFF; }
+                                                        QCheckBox::indicator:checked { background-color: #2F5C8F; }
+                                                    </string>
+                                                </property>
+                                                <property name="text">
+                                                    <string>Выбрать круговую</string>
+                                                </property>
+                                            </widget>
+                                        </item>
+                                        <item row="1" column="2">
+                                            <widget class="QCheckBox" name="lineChartCheckBox">
+                                                <property name="minimumSize">
+                                                    <size>
+                                                        <width>0</width>
+                                                        <height>35</height>
+                                                    </size>
+                                                </property>
+                                                <property name="font">
+                                                    <font>
+                                                        <family>Times New Roman</family>
+                                                        <pointsize>13</pointsize>
+                                                    </font>
+                                                </property>
+                                                <property name="styleSheet">
+                                                    <string notr="true">QCheckBox { color: #1A1A1A; spacing: 10px; }
+                                                        QCheckBox::indicator { width: 22px; height: 22px; border: 2px
+                                                        solid #2F5C8F; border-radius: 4px; background-color: #FFFFFF; }
+                                                        QCheckBox::indicator:checked { background-color: #2F5C8F; }
+                                                    </string>
+                                                </property>
+                                                <property name="text">
+                                                    <string>Выбрать линейную</string>
+                                                </property>
+                                            </widget>
+                                        </item>
+                                    </layout>
+                                </item>
+                                <item>
+                                    <widget class="QPushButton" name="exportPdfButton">
+                                        <property name="minimumSize">
+                                            <size>
+                                                <width>0</width>
+                                                <height>50</height>
+                                            </size>
+                                        </property>
+                                        <property name="font">
+                                            <font>
+                                                <family>Times New Roman</family>
+                                                <pointsize>13</pointsize>
+                                            </font>
+                                        </property>
+                                        <property name="styleSheet">
+                                            <string notr="true">QPushButton { background-color: #7A9CC6; color: white;
+                                                border: none; border-radius: 10px; }
+                                                QPushButton:hover { background-color: #6A8CB6; }
+                                                QPushButton:pressed { background-color: #5A7CA6; }
+                                            </string>
+                                        </property>
+                                        <property name="text">
+                                            <string>Выгрузить в PDF</string>
+                                        </property>
+                                    </widget>
+                                </item>
+                            </layout>
+                        </widget>
+
+                        <widget class="QWidget" name="tabAssign">
+                            <attribute name="title">
+                                <string>Прикрепление пациентов</string>
+                            </attribute>
+                            <layout class="QVBoxLayout" name="assignLayout">
+                                <property name="spacing">
+                                    <number>14</number>
+                                </property>
+                                <item>
+                                    <widget class="QLabel">
+                                        <property name="font">
+                                            <font>
+                                                <family>Times New Roman</family>
+                                                <pointsize>13</pointsize>
+                                                <bold>true</bold>
+                                            </font>
+                                        </property>
+                                        <property name="styleSheet">
+                                            <string notr="true">color: #2F5C8F;</string>
+                                        </property>
+                                        <property name="text">
+                                            <string>Выберите пациента и врача для прикрепления</string>
+                                        </property>
+                                    </widget>
+                                </item>
+                                <item>
+                                    <layout class="QHBoxLayout" name="assignFormRow">
+                                        <property name="spacing">
+                                            <number>12</number>
+                                        </property>
+                                        <item>
+                                            <widget class="QComboBox" name="assignPatientCombo">
+                                                <property name="minimumHeight">
+                                                    <number>42</number>
+                                                </property>
+                                                <property name="minimumWidth">
+                                                    <number>320</number>
+                                                </property>
+                                            </widget>
+                                        </item>
+                                        <item>
+                                            <widget class="QComboBox" name="assignDoctorCombo">
+                                                <property name="minimumHeight">
+                                                    <number>42</number>
+                                                </property>
+                                                <property name="minimumWidth">
+                                                    <number>320</number>
+                                                </property>
+                                            </widget>
+                                        </item>
+                                        <item>
+                                            <widget class="QPushButton" name="assignBtn">
+                                                <property name="minimumSize">
+                                                    <size>
+                                                        <width>220</width>
+                                                        <height>42</height>
+                                                    </size>
+                                                </property>
+                                                <property name="styleSheet">
+                                                    <string notr="true">QPushButton { background-color: #2F5C8F; color:
+                                                        white; border: none; border-radius: 10px; font-family: "Times
+                                                        New Roman"; font-size: 13px; }
+                                                        QPushButton:hover { background-color: #1E4470; }
+                                                        QPushButton:pressed { background-color: #163257; }
+                                                    </string>
+                                                </property>
+                                                <property name="text">
+                                                    <string>Прикрепить к врачу</string>
+                                                </property>
+                                            </widget>
+                                        </item>
+                                        <item>
+                                            <spacer name="assignSpacer">
+                                                <property name="orientation">
+                                                    <enum>Qt::Horizontal</enum>
+                                                </property>
+                                                <property name="sizeHint" stdset="0">
+                                                    <size>
+                                                        <width>40</width>
+                                                        <height>20</height>
+                                                    </size>
+                                                </property>
+                                            </spacer>
+                                        </item>
+                                    </layout>
+                                </item>
+                                <item>
+                                    <widget class="QLabel">
+                                        <property name="font">
+                                            <font>
+                                                <family>Times New Roman</family>
+                                                <pointsize>12</pointsize>
+                                            </font>
+                                        </property>
+                                        <property name="text">
+                                            <string>Текущее распределение:</string>
+                                        </property>
+                                    </widget>
+                                </item>
+                                <item>
+                                    <widget class="QTableWidget" name="assignTable"/>
+                                </item>
+                            </layout>
+                        </widget>
+
+                        <widget class="QWidget" name="tabUsers">
+                            <attribute name="title">
+                                <string>Управление пользователями</string>
+                            </attribute>
+                            <layout class="QVBoxLayout" name="usersLayout">
+                                <property name="spacing">
+                                    <number>12</number>
+                                </property>
+                                <item>
+                                    <layout class="QHBoxLayout" name="formLayout">
+                                        <property name="spacing">
+                                            <number>10</number>
+                                        </property>
+                                        <item>
+                                            <widget class="QLineEdit" name="loginLine">
+                                                <property name="placeholderText">
+                                                    <string>Логин</string>
+                                                </property>
+                                                <property name="minimumHeight">
+                                                    <number>40</number>
+                                                </property>
+                                            </widget>
+                                        </item>
+                                        <item>
+                                            <widget class="QLineEdit" name="passwordLine">
+                                                <property name="placeholderText">
+                                                    <string>Пароль</string>
+                                                </property>
+                                                <property name="minimumHeight">
+                                                    <number>40</number>
+                                                </property>
+                                            </widget>
+                                        </item>
+                                        <item>
+                                            <widget class="QLineEdit" name="fullNameLine">
+                                                <property name="placeholderText">
+                                                    <string>ФИО</string>
+                                                </property>
+                                                <property name="minimumHeight">
+                                                    <number>40</number>
+                                                </property>
+                                            </widget>
+                                        </item>
+                                        <item>
+                                            <widget class="QComboBox" name="roleCombo">
+                                                <property name="minimumHeight">
+                                                    <number>40</number>
+                                                </property>
+                                                <item>
+                                                    <property name="text">
+                                                        <string>doctor</string>
+                                                    </property>
+                                                </item>
+                                                <item>
+                                                    <property name="text">
+                                                        <string>patient</string>
+                                                    </property>
+                                                </item>
+                                                <item>
+                                                    <property name="text">
+                                                        <string>admin</string>
+                                                    </property>
+                                                </item>
+                                            </widget>
+                                        </item>
+                                        <item>
+                                            <widget class="QPushButton" name="addBtn">
+                                                <property name="minimumSize">
+                                                    <size>
+                                                        <width>130</width>
+                                                        <height>40</height>
+                                                    </size>
+                                                </property>
+                                                <property name="styleSheet">
+                                                    <string notr="true">QPushButton { background-color: #2F5C8F; color:
+                                                        white; border: none; border-radius: 10px; font-family: "Times
+                                                        New Roman"; font-size: 13px; }
+                                                        QPushButton:hover { background-color: #1E4470; }
+                                                        QPushButton:pressed { background-color: #163257; }
+                                                    </string>
+                                                </property>
+                                                <property name="text">
+                                                    <string>Добавить</string>
+                                                </property>
+                                            </widget>
+                                        </item>
+                                    </layout>
+                                </item>
+                                <item>
+                                    <layout class="QHBoxLayout" name="buttonsLayout">
+                                        <property name="spacing">
+                                            <number>10</number>
+                                        </property>
+                                        <item>
+                                            <widget class="QPushButton" name="generateBtn">
+                                                <property name="minimumSize">
+                                                    <size>
+                                                        <width>240</width>
+                                                        <height>40</height>
+                                                    </size>
+                                                </property>
+                                                <property name="styleSheet">
+                                                    <string notr="true">QPushButton { background-color: #7A9CC6; color:
+                                                        white; border: none; border-radius: 10px; font-family: "Times
+                                                        New Roman"; font-size: 13px; }
+                                                        QPushButton:hover { background-color: #6A8CB6; }
+                                                        QPushButton:pressed { background-color: #5A7CA6; }
+                                                    </string>
+                                                </property>
+                                                <property name="text">
+                                                    <string>Сгенерировать логин и пароль</string>
+                                                </property>
+                                            </widget>
+                                        </item>
+                                        <item>
+                                            <spacer name="spacer1">
+                                                <property name="orientation">
+                                                    <enum>Qt::Horizontal</enum>
+                                                </property>
+                                                <property name="sizeHint" stdset="0">
+                                                    <size>
+                                                        <width>40</width>
+                                                        <height>20</height>
+                                                    </size>
+                                                </property>
+                                            </spacer>
+                                        </item>
+                                        <item>
+                                            <widget class="QPushButton" name="resetPasswordBtn">
+                                                <property name="minimumSize">
+                                                    <size>
+                                                        <width>180</width>
+                                                        <height>40</height>
+                                                    </size>
+                                                </property>
+                                                <property name="styleSheet">
+                                                    <string notr="true">QPushButton { background-color: #F2994A; color:
+                                                        white; border: none; border-radius: 10px; font-family: "Times
+                                                        New Roman"; font-size: 13px; }
+                                                        QPushButton:hover { background-color: #E0842F; }
+                                                        QPushButton:pressed { background-color: #C07020; }
+                                                    </string>
+                                                </property>
+                                                <property name="text">
+                                                    <string>Сбросить пароль</string>
+                                                </property>
+                                            </widget>
+                                        </item>
+                                        <item>
+                                            <widget class="QPushButton" name="deleteBtn">
+                                                <property name="minimumSize">
+                                                    <size>
+                                                        <width>160</width>
+                                                        <height>40</height>
+                                                    </size>
+                                                </property>
+                                                <property name="styleSheet">
+                                                    <string notr="true">QPushButton { background-color: #C0504D; color:
+                                                        white; border: none; border-radius: 10px; font-family: "Times
+                                                        New Roman"; font-size: 13px; }
+                                                        QPushButton:hover { background-color: #A0403D; }
+                                                        QPushButton:pressed { background-color: #803533; }
+                                                    </string>
+                                                </property>
+                                                <property name="text">
+                                                    <string>Удалить выбранного</string>
+                                                </property>
+                                            </widget>
+                                        </item>
+                                    </layout>
+                                </item>
+                                <item>
+                                    <widget class="QTableWidget" name="usersTable"/>
+                                </item>
+                            </layout>
+                        </widget>
+
+                    </widget>
+                </item>
+
+                <item>
+                    <widget class="QLabel" name="statusLabel">
+                        <property name="font">
+                            <font>
+                                <family>Times New Roman</family>
+                                <pointsize>10</pointsize>
+                            </font>
+                        </property>
+                        <property name="styleSheet">
+                            <string notr="true">color: #666666; padding: 4px 8px; background: transparent;</string>
+                        </property>
+                        <property name="text">
+                            <string>Проверка подключения...</string>
+                        </property>
+                    </widget>
+                </item>
             </layout>
-           </widget>
-          </item>
-          <item row="0" column="1">
-           <widget class="QFrame" name="pieChartFrame">
-            <property name="minimumSize"><size><width>0</width><height>280</height></size></property>
-            <property name="styleSheet"><string notr="true">background-color: #FFFFFF; border-radius: 12px;</string></property>
-            <layout class="QVBoxLayout" name="pieChartLayout">
-             <property name="leftMargin"><number>10</number></property>
-             <property name="topMargin"><number>10</number></property>
-             <property name="rightMargin"><number>10</number></property>
-             <property name="bottomMargin"><number>10</number></property>
-            </layout>
-           </widget>
-          </item>
-          <item row="0" column="2">
-           <widget class="QFrame" name="lineChartFrame">
-            <property name="minimumSize"><size><width>0</width><height>280</height></size></property>
-            <property name="styleSheet"><string notr="true">background-color: #FFFFFF; border-radius: 12px;</string></property>
-            <layout class="QVBoxLayout" name="lineChartLayout">
-             <property name="leftMargin"><number>10</number></property>
-             <property name="topMargin"><number>10</number></property>
-             <property name="rightMargin"><number>10</number></property>
-             <property name="bottomMargin"><number>10</number></property>
-            </layout>
-           </widget>
-          </item>
-          <item row="1" column="0"><widget class="QCheckBox" name="barChartCheckBox">
-           <property name="minimumSize"><size><width>0</width><height>35</height></size></property>
-           <property name="font"><font><family>Times New Roman</family><pointsize>13</pointsize></font></property>
-           <property name="styleSheet"><string notr="true">QCheckBox { color: #1A1A1A; spacing: 10px; }
-QCheckBox::indicator { width: 22px; height: 22px; border: 2px solid #2F5C8F; border-radius: 4px; background-color: #FFFFFF; }
-QCheckBox::indicator:checked { background-color: #2F5C8F; }</string></property>
-           <property name="text"><string>Выбрать столбчатую</string></property>
-          </widget></item>
-          <item row="1" column="1"><widget class="QCheckBox" name="pieChartCheckBox">
-           <property name="minimumSize"><size><width>0</width><height>35</height></size></property>
-           <property name="font"><font><family>Times New Roman</family><pointsize>13</pointsize></font></property>
-           <property name="styleSheet"><string notr="true">QCheckBox { color: #1A1A1A; spacing: 10px; }
-QCheckBox::indicator { width: 22px; height: 22px; border: 2px solid #2F5C8F; border-radius: 4px; background-color: #FFFFFF; }
-QCheckBox::indicator:checked { background-color: #2F5C8F; }</string></property>
-           <property name="text"><string>Выбрать круговую</string></property>
-          </widget></item>
-          <item row="1" column="2"><widget class="QCheckBox" name="lineChartCheckBox">
-           <property name="minimumSize"><size><width>0</width><height>35</height></size></property>
-           <property name="font"><font><family>Times New Roman</family><pointsize>13</pointsize></font></property>
-           <property name="styleSheet"><string notr="true">QCheckBox { color: #1A1A1A; spacing: 10px; }
-QCheckBox::indicator { width: 22px; height: 22px; border: 2px solid #2F5C8F; border-radius: 4px; background-color: #FFFFFF; }
-QCheckBox::indicator:checked { background-color: #2F5C8F; }</string></property>
-           <property name="text"><string>Выбрать линейную</string></property>
-          </widget></item>
-         </layout>
-        </item>
-        <item><widget class="QPushButton" name="exportPdfButton">
-         <property name="minimumSize"><size><width>0</width><height>50</height></size></property>
-         <property name="font"><font><family>Times New Roman</family><pointsize>13</pointsize></font></property>
-         <property name="styleSheet"><string notr="true">QPushButton { background-color: #7A9CC6; color: white; border: none; border-radius: 10px; }
-QPushButton:hover { background-color: #6A8CB6; }
-QPushButton:pressed { background-color: #5A7CA6; }</string></property>
-         <property name="text"><string>Выгрузить в PDF</string></property>
-        </widget></item>
-       </layout>
-      </widget>
-
-      <widget class="QWidget" name="tabAssign">
-       <attribute name="title"><string>Прикрепление пациентов</string></attribute>
-       <layout class="QVBoxLayout" name="assignLayout">
-        <property name="spacing"><number>14</number></property>
-        <item><widget class="QLabel">
-         <property name="font"><font><family>Times New Roman</family><pointsize>13</pointsize><bold>true</bold></font></property>
-         <property name="styleSheet"><string notr="true">color: #2F5C8F;</string></property>
-         <property name="text"><string>Выберите пациента и врача для прикрепления</string></property>
-        </widget></item>
-        <item>
-         <layout class="QHBoxLayout" name="assignFormRow">
-          <property name="spacing"><number>12</number></property>
-          <item><widget class="QComboBox" name="assignPatientCombo">
-           <property name="minimumHeight"><number>42</number></property>
-           <property name="minimumWidth"><number>320</number></property>
-          </widget></item>
-          <item><widget class="QComboBox" name="assignDoctorCombo">
-           <property name="minimumHeight"><number>42</number></property>
-           <property name="minimumWidth"><number>320</number></property>
-          </widget></item>
-          <item><widget class="QPushButton" name="assignBtn">
-           <property name="minimumSize"><size><width>220</width><height>42</height></size></property>
-           <property name="styleSheet"><string notr="true">QPushButton { background-color: #2F5C8F; color: white; border: none; border-radius: 10px; font-family: "Times New Roman"; font-size: 13px; }
-QPushButton:hover { background-color: #1E4470; }
-QPushButton:pressed { background-color: #163257; }</string></property>
-           <property name="text"><string>Прикрепить к врачу</string></property>
-          </widget></item>
-          <item><spacer name="assignSpacer">
-           <property name="orientation"><enum>Qt::Horizontal</enum></property>
-           <property name="sizeHint" stdset="0"><size><width>40</width><height>20</height></size></property>
-          </spacer></item>
-         </layout>
-        </item>
-        <item><widget class="QLabel">
-         <property name="font"><font><family>Times New Roman</family><pointsize>12</pointsize></font></property>
-         <property name="text"><string>Текущее распределение:</string></property>
-        </widget></item>
-        <item><widget class="QTableWidget" name="assignTable"/></item>
-       </layout>
-      </widget>
-
-      <widget class="QWidget" name="tabUsers">
-       <attribute name="title"><string>Управление пользователями</string></attribute>
-       <layout class="QVBoxLayout" name="usersLayout">
-        <property name="spacing"><number>12</number></property>
-        <item>
-         <layout class="QHBoxLayout" name="formLayout">
-          <property name="spacing"><number>10</number></property>
-          <item><widget class="QLineEdit" name="loginLine">
-           <property name="placeholderText"><string>Логин</string></property>
-           <property name="minimumHeight"><number>40</number></property>
-          </widget></item>
-          <item><widget class="QLineEdit" name="passwordLine">
-           <property name="placeholderText"><string>Пароль</string></property>
-           <property name="minimumHeight"><number>40</number></property>
-          </widget></item>
-          <item><widget class="QLineEdit" name="fullNameLine">
-           <property name="placeholderText"><string>ФИО</string></property>
-           <property name="minimumHeight"><number>40</number></property>
-          </widget></item>
-          <item><widget class="QComboBox" name="roleCombo">
-           <property name="minimumHeight"><number>40</number></property>
-           <item><property name="text"><string>doctor</string></property></item>
-           <item><property name="text"><string>patient</string></property></item>
-           <item><property name="text"><string>admin</string></property></item>
-          </widget></item>
-          <item><widget class="QPushButton" name="addBtn">
-           <property name="minimumSize"><size><width>130</width><height>40</height></size></property>
-           <property name="styleSheet"><string notr="true">QPushButton { background-color: #2F5C8F; color: white; border: none; border-radius: 10px; font-family: "Times New Roman"; font-size: 13px; }
-QPushButton:hover { background-color: #1E4470; }
-QPushButton:pressed { background-color: #163257; }</string></property>
-           <property name="text"><string>Добавить</string></property>
-          </widget></item>
-         </layout>
-        </item>
-        <item>
-         <layout class="QHBoxLayout" name="buttonsLayout">
-          <property name="spacing"><number>10</number></property>
-          <item><widget class="QPushButton" name="generateBtn">
-           <property name="minimumSize"><size><width>240</width><height>40</height></size></property>
-           <property name="styleSheet"><string notr="true">QPushButton { background-color: #7A9CC6; color: white; border: none; border-radius: 10px; font-family: "Times New Roman"; font-size: 13px; }
-QPushButton:hover { background-color: #6A8CB6; }
-QPushButton:pressed { background-color: #5A7CA6; }</string></property>
-           <property name="text"><string>Сгенерировать логин и пароль</string></property>
-          </widget></item>
-          <item><spacer name="spacer1">
-           <property name="orientation"><enum>Qt::Horizontal</enum></property>
-           <property name="sizeHint" stdset="0"><size><width>40</width><height>20</height></size></property>
-          </spacer></item>
-          <item><widget class="QPushButton" name="resetPasswordBtn">
-           <property name="minimumSize"><size><width>180</width><height>40</height></size></property>
-           <property name="styleSheet"><string notr="true">QPushButton { background-color: #F2994A; color: white; border: none; border-radius: 10px; font-family: "Times New Roman"; font-size: 13px; }
-QPushButton:hover { background-color: #E0842F; }
-QPushButton:pressed { background-color: #C07020; }</string></property>
-           <property name="text"><string>Сбросить пароль</string></property>
-          </widget></item>
-          <item><widget class="QPushButton" name="deleteBtn">
-           <property name="minimumSize"><size><width>160</width><height>40</height></size></property>
-           <property name="styleSheet"><string notr="true">QPushButton { background-color: #C0504D; color: white; border: none; border-radius: 10px; font-family: "Times New Roman"; font-size: 13px; }
-QPushButton:hover { background-color: #A0403D; }
-QPushButton:pressed { background-color: #803533; }</string></property>
-           <property name="text"><string>Удалить выбранного</string></property>
-          </widget></item>
-         </layout>
-        </item>
-        <item><widget class="QTableWidget" name="usersTable"/></item>
-       </layout>
-      </widget>
-
-     </widget>
-    </item>
-
-    <item>
-     <widget class="QLabel" name="statusLabel">
-      <property name="font"><font><family>Times New Roman</family><pointsize>10</pointsize></font></property>
-      <property name="styleSheet"><string notr="true">color: #666666; padding: 4px 8px; background: transparent;</string></property>
-      <property name="text"><string>Проверка подключения...</string></property>
-     </widget>
-    </item>
-   </layout>
-  </widget>
- </widget>
- <resources/>
- <connections/>
+        </widget>
+    </widget>
+    <resources/>
+    <connections/>
 </ui>

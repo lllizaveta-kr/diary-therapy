@@ -1,16 +1,20 @@
 from datetime import datetime
 
-from PySide6.QtWidgets import (
-    QMainWindow, QTableWidgetItem, QHeaderView,
-    QGraphicsOpacityEffect, QGraphicsDropShadowEffect, QMessageBox,
-)
-from PySide6.QtGui import QColor, QShortcut, QKeySequence
 from PySide6.QtCore import QDate, QTime, QPropertyAnimation, QEasingCurve, QTimer
+from PySide6.QtGui import QColor, QShortcut, QKeySequence
+from PySide6.QtWidgets import (
+    QMainWindow,
+    QTableWidgetItem,
+    QHeaderView,
+    QGraphicsOpacityEffect,
+    QGraphicsDropShadowEffect,
+    QMessageBox,
+)
 
-from ui_py.ui_patient import Ui_PatientWindow
-from windows import msgbox as mb
 import db
 import theme
+from ui_py.ui_patient import Ui_PatientWindow
+from windows import msgbox as mb
 
 
 class PatientWindow(QMainWindow):
@@ -45,9 +49,11 @@ class PatientWindow(QMainWindow):
         short_name = self.full_name.split()[0] if self.full_name else ""
         self.ui.greetingLabel.setText(f"{greeting}, {short_name}!")
 
-        for frame in (self.ui.cardToday,
-                      self.ui.cardDiaryHome,
-                      self.ui.cardHistoryHome):
+        for frame in (
+            self.ui.cardToday,
+            self.ui.cardDiaryHome,
+            self.ui.cardHistoryHome,
+        ):
             shadow = QGraphicsDropShadowEffect(self)
             shadow.setBlurRadius(28)
             shadow.setColor(QColor(47, 92, 143, 40))
@@ -58,9 +64,7 @@ class PatientWindow(QMainWindow):
         self.ui.prescrTable.setHorizontalHeaderLabels(
             ["ID", "Лекарство", "Дозировка", "Кратность", "Начало", "Статус"]
         )
-        self.ui.prescrTable.horizontalHeader().setSectionResizeMode(
-            QHeaderView.ResizeMode.Stretch
-        )
+        self.ui.prescrTable.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
 
         self.ui.historyTable.setColumnCount(5)
         self.ui.historyTable.setHorizontalHeaderLabels(
@@ -71,8 +75,12 @@ class PatientWindow(QMainWindow):
         )
 
         self.nav_buttons = [
-            self.ui.navHome, self.ui.navPrescr, self.ui.navDiary,
-            self.ui.navHistory, self.ui.navProfile, self.ui.navHelp,
+            self.ui.navHome,
+            self.ui.navPrescr,
+            self.ui.navDiary,
+            self.ui.navHistory,
+            self.ui.navProfile,
+            self.ui.navHelp,
         ]
         self.ui.navHome.clicked.connect(lambda: self.go_to(0))
         self.ui.navPrescr.clicked.connect(lambda: self.go_to(1))
@@ -116,8 +124,14 @@ class PatientWindow(QMainWindow):
         self.ui.pages.setCurrentIndex(index)
         for i, btn in enumerate(self.nav_buttons):
             btn.setChecked(i == index)
-        titles = ["Главная", "Мои назначения", "Дневник самочувствия",
-                  "История записей", "Мой профиль", "Помощь"]
+        titles = [
+            "Главная",
+            "Мои назначения",
+            "Дневник самочувствия",
+            "История записей",
+            "Мой профиль",
+            "Помощь",
+        ]
         self.ui.pageTitleLabel.setText(titles[index])
 
         if animate:
@@ -156,11 +170,14 @@ class PatientWindow(QMainWindow):
             if conn:
                 try:
                     cur = conn.cursor()
-                    cur.execute("""
+                    cur.execute(
+                        """
                         select u.full_name from doctors d
                         join users u on u.id_user = d.id_user
                         where d.id_doctor = %s
-                    """, (id_doctor,))
+                    """,
+                        (id_doctor,),
+                    )
                     row = cur.fetchone()
                     if row:
                         self.ui.profDoctor.setText(str(row[0]))
@@ -199,7 +216,8 @@ class PatientWindow(QMainWindow):
             if key in self._notified_today:
                 continue
 
-            # time_of_day из MySQL может быть datetime.timedelta или datetime.time
+            # time_of_day из MySQL может быть datetime.timedelta или
+            # datetime.time
             try:
                 if hasattr(time_of_day, "seconds"):
                     total_sec = time_of_day.seconds
@@ -218,8 +236,7 @@ class PatientWindow(QMainWindow):
             # Если время приёма наступило (в пределах ±1 минуты)
             if -1 <= diff <= 1:
                 self._notified_today.add(key)
-                self._show_reminder(name_med, dose,
-                                    sched_time.toString("HH:mm"), instructions)
+                self._show_reminder(name_med, dose, sched_time.toString("HH:mm"), instructions)
 
     def _show_reminder(self, name_med, dose, time_str, instructions):
         """Показывает всплывающее окно с напоминанием."""
@@ -271,9 +288,14 @@ class PatientWindow(QMainWindow):
         return [name for chk, name in checks if chk.isChecked()]
 
     def save_diary(self):
-        from validators import (validate_pressure, validate_pulse,
-                                validate_sugar, validate_temperature,
-                                validate_height, validate_weight)
+        from validators import (
+            validate_pressure,
+            validate_pulse,
+            validate_sugar,
+            validate_temperature,
+            validate_height,
+            validate_weight,
+        )
 
         well_being = self.ui.wellBeingCombo.currentText()
         intensity = self.ui.intensitySlider.value()
@@ -304,8 +326,11 @@ class PatientWindow(QMainWindow):
                 return
 
         if not notes and not symptoms and intensity == 0:
-            mb.warning(self, "Пустая запись",
-                       "Заполните хотя бы что-то: симптомы, показатели или заметки.")
+            mb.warning(
+                self,
+                "Пустая запись",
+                "Заполните хотя бы что-то: симптомы, показатели или заметки.",
+            )
             return
         # === КОНЕЦ ВАЛИДАЦИИ ===
 
@@ -349,16 +374,28 @@ class PatientWindow(QMainWindow):
         # === ОЧИСТКА ФОРМЫ ===
         self.ui.wellBeingCombo.setCurrentIndex(0)
         self.ui.intensitySlider.setValue(0)
-        for chk in (self.ui.chkHeadache, self.ui.chkWeakness,
-                    self.ui.chkNausea, self.ui.chkDizzy,
-                    self.ui.chkHeart, self.ui.chkBreath,
-                    self.ui.chkPressureUp, self.ui.chkSleep,
-                    self.ui.chkAppetite, self.ui.chkTremor,
-                    self.ui.chkSweat, self.ui.chkOtherSymptom,
-                    self.ui.trigStress, self.ui.trigWeather,
-                    self.ui.trigFood, self.ui.trigPhysical,
-                    self.ui.trigSleep, self.ui.trigSkipMed,
-                    self.ui.trigAlcohol, self.ui.trigOtherTrigger):
+        for chk in (
+            self.ui.chkHeadache,
+            self.ui.chkWeakness,
+            self.ui.chkNausea,
+            self.ui.chkDizzy,
+            self.ui.chkHeart,
+            self.ui.chkBreath,
+            self.ui.chkPressureUp,
+            self.ui.chkSleep,
+            self.ui.chkAppetite,
+            self.ui.chkTremor,
+            self.ui.chkSweat,
+            self.ui.chkOtherSymptom,
+            self.ui.trigStress,
+            self.ui.trigWeather,
+            self.ui.trigFood,
+            self.ui.trigPhysical,
+            self.ui.trigSleep,
+            self.ui.trigSkipMed,
+            self.ui.trigAlcohol,
+            self.ui.trigOtherTrigger,
+        ):
             chk.setChecked(False)
         self.ui.pressureLine.clear()
         self.ui.pulseLine.clear()

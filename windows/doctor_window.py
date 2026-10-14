@@ -1,21 +1,35 @@
-from datetime import datetime
 import re
+from datetime import datetime
 
-from PySide6.QtWidgets import (
-    QMainWindow, QTableWidgetItem, QHeaderView,
-    QGraphicsOpacityEffect, QGraphicsDropShadowEffect,
-    QDialog, QVBoxLayout, QHBoxLayout, QLabel, QPushButton,
-    QLineEdit, QApplication, QFrame, QSizePolicy,
-    QScrollArea, QWidget, QListWidget, QInputDialog,
-    QMessageBox, QTableWidget,
-)
-from PySide6.QtGui import QColor, QShortcut, QKeySequence
 from PySide6.QtCore import QDate, QPropertyAnimation, QEasingCurve, Qt, QTimer
+from PySide6.QtGui import QColor, QShortcut, QKeySequence
+from PySide6.QtWidgets import (
+    QMainWindow,
+    QTableWidgetItem,
+    QHeaderView,
+    QGraphicsOpacityEffect,
+    QGraphicsDropShadowEffect,
+    QDialog,
+    QVBoxLayout,
+    QHBoxLayout,
+    QLabel,
+    QPushButton,
+    QLineEdit,
+    QApplication,
+    QFrame,
+    QSizePolicy,
+    QScrollArea,
+    QWidget,
+    QListWidget,
+    QInputDialog,
+    QMessageBox,
+    QTableWidget,
+)
 
-from ui_py.ui_doctor import Ui_DoctorWindow
-from windows import msgbox as mb
 import db
 import theme
+from ui_py.ui_doctor import Ui_DoctorWindow
+from windows import msgbox as mb
 
 
 class DoctorWindow(QMainWindow):
@@ -51,9 +65,11 @@ class DoctorWindow(QMainWindow):
         short_name = parts[1] if len(parts) > 1 else ""
         self.ui.greetingLabel.setText(f"{greeting}, {short_name}!")
 
-        for frame in (self.ui.cardPatients,
-                      self.ui.cardPrescrHome,
-                      self.ui.cardDiaryHome):
+        for frame in (
+            self.ui.cardPatients,
+            self.ui.cardPrescrHome,
+            self.ui.cardDiaryHome,
+        ):
             shadow = QGraphicsDropShadowEffect(self)
             shadow.setBlurRadius(28)
             shadow.setColor(QColor(47, 92, 143, 40))
@@ -69,8 +85,12 @@ class DoctorWindow(QMainWindow):
         )
 
         self.nav_buttons = [
-            self.ui.navHome, self.ui.navPatients, self.ui.navAddPatient,
-            self.ui.navPrescriptions, self.ui.navDiaries, self.ui.navHelp,
+            self.ui.navHome,
+            self.ui.navPatients,
+            self.ui.navAddPatient,
+            self.ui.navPrescriptions,
+            self.ui.navDiaries,
+            self.ui.navHelp,
         ]
         self.ui.navHome.clicked.connect(lambda: self.go_to(0))
         self.ui.navPatients.clicked.connect(lambda: self.go_to(1))
@@ -122,8 +142,14 @@ class DoctorWindow(QMainWindow):
         for i, btn in enumerate(self.nav_buttons):
             btn.setChecked(i == index)
 
-        titles = ["Главная", "Мои пациенты", "Добавить пациента",
-                  "Назначения", "Дневники пациентов", "Помощь"]
+        titles = [
+            "Главная",
+            "Мои пациенты",
+            "Добавить пациента",
+            "Назначения",
+            "Дневники пациентов",
+            "Помощь",
+        ]
         self.ui.pageTitleLabel.setText(titles[index])
 
         if animate:
@@ -144,8 +170,12 @@ class DoctorWindow(QMainWindow):
 
     # ============== СОЗДАНИЕ ПАЦИЕНТА ==============
     def create_patient(self):
-        from validators import (validate_name, validate_phone,
-                                validate_policy, validate_birth_date)
+        from validators import (
+            validate_name,
+            validate_phone,
+            validate_policy,
+            validate_birth_date,
+        )
 
         full_name = self.ui.newPatientFullName.text().strip()
         policy = self.ui.newPatientPolicy.text().strip()
@@ -195,8 +225,7 @@ class DoctorWindow(QMainWindow):
         password = db.generate_password()
 
         id_user = db.create_patient_by_doctor(
-            self.id_doctor, full_name, birth, gender,
-            policy, phone, login, password
+            self.id_doctor, full_name, birth, gender, policy, phone, login, password
         )
         if id_user is None:
             mb.critical(self, "Ошибка", "Не удалось создать пациента.")
@@ -270,7 +299,8 @@ class DoctorWindow(QMainWindow):
         def copy_all():
             QApplication.clipboard().setText(f"Логин: {login}\nПароль: {password}")
             copy_all_btn.setText("✓ Скопировано")
-            t = QTimer(dlg); t.setSingleShot(True)
+            t = QTimer(dlg)
+            t.setSingleShot(True)
             t.timeout.connect(lambda: safe_set(copy_all_btn, "Скопировать логин и пароль"))
             t.start(1500)
 
@@ -343,25 +373,20 @@ class DoctorWindow(QMainWindow):
                 self.ui.dosageLine.setText(dosage)
 
     def add_new_medication(self):
-        name, ok = QInputDialog.getText(
-            self, "Новый препарат",
-            "Введите название препарата:"
-        )
+        name, ok = QInputDialog.getText(self, "Новый препарат", "Введите название препарата:")
         if not ok or not name.strip():
             return
         name = name.strip()
 
         form, ok2 = QInputDialog.getText(
-            self, "Форма выпуска",
-            "Таблетки / Капсулы / Раствор / Аэрозоль / Гель / Другое:"
+            self,
+            "Форма выпуска",
+            "Таблетки / Капсулы / Раствор / Аэрозоль / Гель / Другое:",
         )
         if not ok2:
             form = ""
 
-        dosage, ok3 = QInputDialog.getText(
-            self, "Дозировка",
-            "Например: 10 мг, 500 мг, 5 мл:"
-        )
+        dosage, ok3 = QInputDialog.getText(self, "Дозировка", "Например: 10 мг, 500 мг, 5 мл:")
         if not ok3:
             dosage = ""
 
@@ -396,9 +421,12 @@ class DoctorWindow(QMainWindow):
         id_medication = self._get_selected_medication_id()
 
         if not id_medication:
-            mb.warning(self, "Не выбран препарат",
-                       "Выберите препарат из списка или введите новый,\n"
-                       "нажав кнопку «+ Добавить препарат».")
+            mb.warning(
+                self,
+                "Не выбран препарат",
+                "Выберите препарат из списка или введите новый,\n"
+                "нажав кнопку «+ Добавить препарат».",
+            )
             self.ui.medicationSearch.setFocus()
             return
 
@@ -413,8 +441,14 @@ class DoctorWindow(QMainWindow):
             return
 
         ok = db.create_prescription(
-            id_patient, self.id_doctor, id_medication,
-            dosage, freq, start, end, comment,
+            id_patient,
+            self.id_doctor,
+            id_medication,
+            dosage,
+            freq,
+            start,
+            end,
+            comment,
         )
         if not ok:
             mb.critical(self, "Ошибка", "Не удалось создать назначение")
@@ -422,7 +456,8 @@ class DoctorWindow(QMainWindow):
 
         # Спрашиваем врача: настроить расписание?
         reply = QMessageBox.question(
-            self, "Расписание приёма",
+            self,
+            "Расписание приёма",
             "Назначение создано.\n\n"
             "Хотите указать точное время приёма (например, 8:00, 14:00, 20:00)?\n"
             "Пациент получит напоминания в эти часы.",
@@ -593,8 +628,12 @@ class DoctorWindow(QMainWindow):
 
     # ============== ДНЕВНИК ==============
     def _parse_wellbeing(self, text: str):
-        result = {"main": text.strip() or "—", "intensity": None,
-                  "triggers": "", "notes": ""}
+        result = {
+            "main": text.strip() or "—",
+            "intensity": None,
+            "triggers": "",
+            "notes": "",
+        }
         if not text:
             return result
         main_part = text.split(".")[0].strip()
@@ -612,11 +651,16 @@ class DoctorWindow(QMainWindow):
 
     def _wellbeing_color(self, main_text: str):
         t = main_text.lower()
-        if "отлично" in t: return "#27AE60", "#FFFFFF"
-        if "хорошо" in t: return "#2ECC71", "#FFFFFF"
-        if "удовлетвор" in t: return "#F2C94C", "#1A1A1A"
-        if "очень плохо" in t or "очень плох" in t: return "#C0392B", "#FFFFFF"
-        if "плохо" in t: return "#E67E22", "#FFFFFF"
+        if "отлично" in t:
+            return "#27AE60", "#FFFFFF"
+        if "хорошо" in t:
+            return "#2ECC71", "#FFFFFF"
+        if "удовлетвор" in t:
+            return "#F2C94C", "#1A1A1A"
+        if "очень плохо" in t or "очень плох" in t:
+            return "#C0392B", "#FFFFFF"
+        if "плохо" in t:
+            return "#E67E22", "#FFFFFF"
         return "#7A9CC6", "#FFFFFF"
 
     def _make_diary_card(self, entry):
@@ -654,7 +698,9 @@ class DoctorWindow(QMainWindow):
         top = QHBoxLayout()
         top.setSpacing(10)
         date_label = QLabel(f"{entry_date}   {entry_time}")
-        date_label.setStyleSheet("font-family: 'Times New Roman'; font-size: 13px; color: #2F5C8F; font-weight: bold; background: transparent;")
+        date_label.setStyleSheet(
+            "font-family: 'Times New Roman'; font-size: 13px; color: #2F5C8F; font-weight: bold; background: transparent;"
+        )
 
         bg, fg = self._wellbeing_color(main)
         badge = QLabel(main.upper())
@@ -672,10 +718,14 @@ class DoctorWindow(QMainWindow):
             int_row = QHBoxLayout()
             int_row.setSpacing(10)
             int_label = QLabel("Интенсивность:")
-            int_label.setStyleSheet("font-family: 'Times New Roman'; font-size: 12px; color: #666666; background: transparent;")
+            int_label.setStyleSheet(
+                "font-family: 'Times New Roman'; font-size: 12px; color: #666666; background: transparent;"
+            )
             bar_container = QFrame()
             bar_container.setFixedHeight(10)
-            bar_container.setStyleSheet("background-color: #EEF3F8; border-radius: 5px; border: none;")
+            bar_container.setStyleSheet(
+                "background-color: #EEF3F8; border-radius: 5px; border: none;"
+            )
             bar_layout = QHBoxLayout(bar_container)
             bar_layout.setContentsMargins(0, 0, 0, 0)
             bar_layout.setSpacing(0)
@@ -685,7 +735,9 @@ class DoctorWindow(QMainWindow):
             bar_layout.addWidget(fill)
             bar_layout.addStretch()
             int_val = QLabel(f"{intensity}/10")
-            int_val.setStyleSheet("font-family: 'Times New Roman'; font-size: 12px; color: #2F5C8F; font-weight: bold; background: transparent;")
+            int_val.setStyleSheet(
+                "font-family: 'Times New Roman'; font-size: 12px; color: #2F5C8F; font-weight: bold; background: transparent;"
+            )
             int_row.addWidget(int_label)
             int_row.addWidget(bar_container, 1)
             int_row.addWidget(int_val)
@@ -695,10 +747,14 @@ class DoctorWindow(QMainWindow):
             sym_row = QHBoxLayout()
             sym_row.setSpacing(8)
             sym_label = QLabel("Симптомы:")
-            sym_label.setStyleSheet("font-family: 'Times New Roman'; font-size: 12px; color: #666666; background: transparent;")
+            sym_label.setStyleSheet(
+                "font-family: 'Times New Roman'; font-size: 12px; color: #666666; background: transparent;"
+            )
             sym_value = QLabel(symptoms)
             sym_value.setWordWrap(True)
-            sym_value.setStyleSheet("font-family: 'Times New Roman'; font-size: 12px; color: #1A1A1A; background: transparent;")
+            sym_value.setStyleSheet(
+                "font-family: 'Times New Roman'; font-size: 12px; color: #1A1A1A; background: transparent;"
+            )
             sym_row.addWidget(sym_label)
             sym_row.addWidget(sym_value, 1)
             layout.addLayout(sym_row)
@@ -707,10 +763,14 @@ class DoctorWindow(QMainWindow):
             tr_row = QHBoxLayout()
             tr_row.setSpacing(8)
             tr_label = QLabel("Триггеры:")
-            tr_label.setStyleSheet("font-family: 'Times New Roman'; font-size: 12px; color: #666666; background: transparent;")
+            tr_label.setStyleSheet(
+                "font-family: 'Times New Roman'; font-size: 12px; color: #666666; background: transparent;"
+            )
             tr_value = QLabel(triggers)
             tr_value.setWordWrap(True)
-            tr_value.setStyleSheet("font-family: 'Times New Roman'; font-size: 12px; color: #1A1A1A; background: transparent;")
+            tr_value.setStyleSheet(
+                "font-family: 'Times New Roman'; font-size: 12px; color: #1A1A1A; background: transparent;"
+            )
             tr_row.addWidget(tr_label)
             tr_row.addWidget(tr_value, 1)
             layout.addLayout(tr_row)
@@ -719,10 +779,14 @@ class DoctorWindow(QMainWindow):
             n_row = QHBoxLayout()
             n_row.setSpacing(8)
             n_label = QLabel("Заметки:")
-            n_label.setStyleSheet("font-family: 'Times New Roman'; font-size: 12px; color: #666666; background: transparent;")
+            n_label.setStyleSheet(
+                "font-family: 'Times New Roman'; font-size: 12px; color: #666666; background: transparent;"
+            )
             n_value = QLabel(notes)
             n_value.setWordWrap(True)
-            n_value.setStyleSheet("font-family: 'Times New Roman'; font-size: 12px; color: #1A1A1A; background: transparent; font-style: italic;")
+            n_value.setStyleSheet(
+                "font-family: 'Times New Roman'; font-size: 12px; color: #1A1A1A; background: transparent; font-style: italic;"
+            )
             n_row.addWidget(n_label)
             n_row.addWidget(n_value, 1)
             layout.addLayout(n_row)
@@ -735,11 +799,15 @@ class DoctorWindow(QMainWindow):
         if indicators:
             ind_parts = []
             for ind in indicators:
-                typ = str(ind[0]); val = str(ind[1]); unit = str(ind[2] or "")
+                typ = str(ind[0])
+                val = str(ind[1])
+                unit = str(ind[2] or "")
                 ind_parts.append(f"{typ}: {val} {unit}".strip())
             ind_label = QLabel("Показатели: " + "  ·  ".join(ind_parts))
             ind_label.setWordWrap(True)
-            ind_label.setStyleSheet("font-family: 'Times New Roman'; font-size: 12px; color: #2F5C8F; background: transparent;")
+            ind_label.setStyleSheet(
+                "font-family: 'Times New Roman'; font-size: 12px; color: #2F5C8F; background: transparent;"
+            )
             layout.addWidget(ind_label)
 
         # -------- ДИАГНОЗ С МКБ-10 --------
@@ -763,7 +831,9 @@ class DoctorWindow(QMainWindow):
         diag_layout.addWidget(diag_title)
 
         lbl1 = QLabel("Болезнь (МКБ-10):")
-        lbl1.setStyleSheet("color: #1A1A1A; font-family: 'Times New Roman'; font-size: 12px; background: transparent;")
+        lbl1.setStyleSheet(
+            "color: #1A1A1A; font-family: 'Times New Roman'; font-size: 12px; background: transparent;"
+        )
         diag_layout.addWidget(lbl1)
 
         disease_search = QLineEdit()
@@ -808,7 +878,9 @@ class DoctorWindow(QMainWindow):
         disease_list.itemClicked.connect(on_disease_selected)
 
         lbl2 = QLabel("Уточнения и рекомендации:")
-        lbl2.setStyleSheet("color: #1A1A1A; font-family: 'Times New Roman'; font-size: 12px; background: transparent;")
+        lbl2.setStyleSheet(
+            "color: #1A1A1A; font-family: 'Times New Roman'; font-size: 12px; background: transparent;"
+        )
         diag_layout.addWidget(lbl2)
 
         diag_text = QLineEdit()
@@ -831,12 +903,9 @@ class DoctorWindow(QMainWindow):
             text = diag_text.text().strip()
             d_id = selected_disease_id[0]
             if not d_id and not text:
-                mb.warning(self, "Ошибка",
-                           "Выберите болезнь или введите комментарий.")
+                mb.warning(self, "Ошибка", "Выберите болезнь или введите комментарий.")
                 return
-            ok = db.set_diary_diagnosis_full(
-                id_diary, text, d_id, self.id_doctor
-            )
+            ok = db.set_diary_diagnosis_full(id_diary, text, d_id, self.id_doctor)
             if ok:
                 mb.info(self, "Готово", "Диагноз сохранён")
 

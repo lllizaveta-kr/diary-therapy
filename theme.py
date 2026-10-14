@@ -1,6 +1,5 @@
-from PySide6.QtWidgets import QApplication, QWidget, QTableWidget
 from PySide6.QtCore import Qt, QSettings
-
+from PySide6.QtWidgets import QWidget, QTableWidget
 
 COLOR_MAP = {
     "#EEF3F8": "#1A1F2B",
@@ -30,7 +29,6 @@ COLOR_MAP = {
     "#D0D0D0": "#4A5260",
     "#C0C0C0": "#5A6270",
 }
-
 
 TABLE_QSS_TEMPLATE = """
 QTableWidget {

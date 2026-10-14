@@ -1,6 +1,5 @@
 from PySide6.QtWidgets import QMessageBox, QPushButton
 
-
 BUTTON_STYLE = """
 QPushButton {
     background-color: #2F5C8F;

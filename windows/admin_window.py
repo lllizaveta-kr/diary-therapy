@@ -1,19 +1,36 @@
-from PySide6.QtWidgets import (
-    QMainWindow, QWidget, QFileDialog, QTableWidgetItem,
-    QGraphicsDropShadowEffect, QApplication, QHeaderView,
-    QDialog, QVBoxLayout, QHBoxLayout, QLabel, QPushButton, QLineEdit,
-    QMessageBox, QProgressDialog,
-)
-from PySide6.QtGui import (
-    QColor, QPainter, QPen, QBrush, QFont,
-    QPixmap, QPageSize, QPageLayout, QPdfWriter,
-)
 from PySide6.QtCore import Qt, QRectF, QTimer
+from PySide6.QtGui import (
+    QColor,
+    QPainter,
+    QPen,
+    QBrush,
+    QFont,
+    QPixmap,
+    QPageSize,
+    QPageLayout,
+    QPdfWriter,
+)
+from PySide6.QtWidgets import (
+    QMainWindow,
+    QWidget,
+    QFileDialog,
+    QTableWidgetItem,
+    QGraphicsDropShadowEffect,
+    QApplication,
+    QHeaderView,
+    QDialog,
+    QVBoxLayout,
+    QHBoxLayout,
+    QLabel,
+    QPushButton,
+    QLineEdit,
+    QMessageBox,
+)
 
-from ui_py.ui_admin import Ui_AdminAnalyticsWindow
-from windows import msgbox as mb
 import db
 import theme
+from ui_py.ui_admin import Ui_AdminAnalyticsWindow
+from windows import msgbox as mb
 
 
 class ChartWidget(QWidget):
@@ -31,10 +48,8 @@ class ChartWidget(QWidget):
         font.setPointSize(11)
         font.setBold(True)
         painter.setFont(font)
-        painter.drawText(QRectF(0, 4, self.width(), 26),
-                         Qt.AlignmentFlag.AlignCenter, self.title)
-        self.draw_content(painter,
-                          QRectF(0, 34, self.width(), self.height() - 34))
+        painter.drawText(QRectF(0, 4, self.width(), 26), Qt.AlignmentFlag.AlignCenter, self.title)
+        self.draw_content(painter, QRectF(0, 34, self.width(), self.height() - 34))
 
     def draw_content(self, painter, rect):
         pass
@@ -65,16 +80,22 @@ class BarChartWidget(ChartWidget):
             painter.setPen(Qt.PenStyle.NoPen)
             painter.drawRoundedRect(QRectF(x, y, bar_w, h), 5, 5)
             painter.setPen(QColor("#2b2b3c"))
-            painter.drawText(QRectF(x, y - 16, bar_w, 16),
-                             Qt.AlignmentFlag.AlignCenter, str(val))
-            painter.drawText(QRectF(x, chart_rect.bottom() + 2, bar_w, 16),
-                             Qt.AlignmentFlag.AlignCenter, str(self.labels[i]))
+            painter.drawText(QRectF(x, y - 16, bar_w, 16), Qt.AlignmentFlag.AlignCenter, str(val))
+            painter.drawText(
+                QRectF(x, chart_rect.bottom() + 2, bar_w, 16),
+                Qt.AlignmentFlag.AlignCenter,
+                str(self.labels[i]),
+            )
 
 
 class PieChartWidget(ChartWidget):
     COLORS = [
-        QColor("#2F5C8F"), QColor("#7A9CC6"), QColor("#4FC3B5"),
-        QColor("#F2994A"), QColor("#C0504D"), QColor("#6C63FF"),
+        QColor("#2F5C8F"),
+        QColor("#7A9CC6"),
+        QColor("#4FC3B5"),
+        QColor("#F2994A"),
+        QColor("#C0504D"),
+        QColor("#6C63FF"),
     ]
 
     def __init__(self):
@@ -109,8 +130,11 @@ class PieChartWidget(ChartWidget):
             painter.setPen(Qt.PenStyle.NoPen)
             painter.drawRoundedRect(QRectF(lx, ly, 12, 12), 3, 3)
             painter.setPen(QColor("#2b2b3c"))
-            painter.drawText(QRectF(lx + 18, ly, 140, 14),
-                             Qt.AlignmentFlag.AlignVCenter, f"{name} — {val}")
+            painter.drawText(
+                QRectF(lx + 18, ly, 140, 14),
+                Qt.AlignmentFlag.AlignVCenter,
+                f"{name} — {val}",
+            )
             ly += 20
 
 
@@ -136,18 +160,28 @@ class LineChartWidget(ChartWidget):
             points.append((x, y))
         painter.setPen(QPen(QColor("#2F5C8F"), 2))
         for i in range(len(points) - 1):
-            painter.drawLine(int(points[i][0]), int(points[i][1]),
-                             int(points[i + 1][0]), int(points[i + 1][1]))
+            painter.drawLine(
+                int(points[i][0]),
+                int(points[i][1]),
+                int(points[i + 1][0]),
+                int(points[i + 1][1]),
+            )
         painter.setFont(QFont("Arial", 8))
         for i, (x, y) in enumerate(points):
             painter.setBrush(QBrush(QColor("#2F5C8F")))
             painter.setPen(QPen(QColor("#ffffff"), 2))
             painter.drawEllipse(QRectF(x - 4, y - 4, 8, 8))
             painter.setPen(QColor("#2b2b3c"))
-            painter.drawText(QRectF(x - 20, y - 20, 40, 14),
-                             Qt.AlignmentFlag.AlignCenter, str(self.data[i]))
-            painter.drawText(QRectF(x - 40, chart_rect.bottom() + 2, 80, 14),
-                             Qt.AlignmentFlag.AlignCenter, str(self.labels[i]))
+            painter.drawText(
+                QRectF(x - 20, y - 20, 40, 14),
+                Qt.AlignmentFlag.AlignCenter,
+                str(self.data[i]),
+            )
+            painter.drawText(
+                QRectF(x - 40, chart_rect.bottom() + 2, 80, 14),
+                Qt.AlignmentFlag.AlignCenter,
+                str(self.labels[i]),
+            )
 
 
 class AdminAnalyticsWindow(QMainWindow):
@@ -157,9 +191,11 @@ class AdminAnalyticsWindow(QMainWindow):
         self.ui = Ui_AdminAnalyticsWindow()
         self.ui.setupUi(self)
 
-        for frame in (self.ui.barChartFrame,
-                      self.ui.pieChartFrame,
-                      self.ui.lineChartFrame):
+        for frame in (
+            self.ui.barChartFrame,
+            self.ui.pieChartFrame,
+            self.ui.lineChartFrame,
+        ):
             shadow = QGraphicsDropShadowEffect(self)
             shadow.setBlurRadius(24)
             shadow.setColor(QColor(47, 92, 143, 40))
@@ -178,18 +214,10 @@ class AdminAnalyticsWindow(QMainWindow):
         self.ui.logoutBtn.clicked.connect(self.on_logout)
 
         self.ui.usersTable.setColumnCount(4)
-        self.ui.usersTable.setHorizontalHeaderLabels(
-            ["ID", "Логин", "Роль", "ФИО"]
-        )
-        self.ui.usersTable.horizontalHeader().setSectionResizeMode(
-            QHeaderView.ResizeMode.Stretch
-        )
-        self.ui.usersTable.setEditTriggers(
-            self.ui.usersTable.EditTrigger.NoEditTriggers
-        )
-        self.ui.usersTable.setSelectionBehavior(
-            self.ui.usersTable.SelectionBehavior.SelectRows
-        )
+        self.ui.usersTable.setHorizontalHeaderLabels(["ID", "Логин", "Роль", "ФИО"])
+        self.ui.usersTable.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
+        self.ui.usersTable.setEditTriggers(self.ui.usersTable.EditTrigger.NoEditTriggers)
+        self.ui.usersTable.setSelectionBehavior(self.ui.usersTable.SelectionBehavior.SelectRows)
 
         self.ui.generateBtn.clicked.connect(self.on_generate)
         self.ui.addBtn.clicked.connect(self.on_add)
@@ -197,18 +225,10 @@ class AdminAnalyticsWindow(QMainWindow):
         self.ui.resetPasswordBtn.clicked.connect(self.on_reset_password)
 
         self.ui.assignTable.setColumnCount(3)
-        self.ui.assignTable.setHorizontalHeaderLabels(
-            ["ID", "Пациент", "Текущий врач"]
-        )
-        self.ui.assignTable.horizontalHeader().setSectionResizeMode(
-            QHeaderView.ResizeMode.Stretch
-        )
-        self.ui.assignTable.setEditTriggers(
-            self.ui.assignTable.EditTrigger.NoEditTriggers
-        )
-        self.ui.assignTable.setSelectionBehavior(
-            self.ui.assignTable.SelectionBehavior.SelectRows
-        )
+        self.ui.assignTable.setHorizontalHeaderLabels(["ID", "Пациент", "Текущий врач"])
+        self.ui.assignTable.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
+        self.ui.assignTable.setEditTriggers(self.ui.assignTable.EditTrigger.NoEditTriggers)
+        self.ui.assignTable.setSelectionBehavior(self.ui.assignTable.SelectionBehavior.SelectRows)
 
         self.ui.assignBtn.clicked.connect(self.on_assign_patient)
 
@@ -228,14 +248,10 @@ class AdminAnalyticsWindow(QMainWindow):
         ok, err = db.check_connection()
         if ok:
             self.ui.statusLabel.setText("● Подключено к базе данных")
-            self.ui.statusLabel.setStyleSheet(
-                "color: #27AE60; padding: 4px 8px; font-size: 10px;"
-            )
+            self.ui.statusLabel.setStyleSheet("color: #27AE60; padding: 4px 8px; font-size: 10px;")
         else:
             self.ui.statusLabel.setText(f"● Нет связи с БД: {err[:60]}")
-            self.ui.statusLabel.setStyleSheet(
-                "color: #C0392B; padding: 4px 8px; font-size: 10px;"
-            )
+            self.ui.statusLabel.setStyleSheet("color: #C0392B; padding: 4px 8px; font-size: 10px;")
 
     def on_logout(self):
         if self.login_window:
@@ -254,8 +270,7 @@ class AdminAnalyticsWindow(QMainWindow):
     def on_generate(self):
         full_name = self.ui.fullNameLine.text().strip()
         if not full_name:
-            mb.warning(self, "Не заполнено ФИО",
-                       "Сначала введите ФИО пользователя.")
+            mb.warning(self, "Не заполнено ФИО", "Сначала введите ФИО пользователя.")
             self.ui.fullNameLine.setFocus()
             return
         login = db.generate_login(full_name)
@@ -295,9 +310,12 @@ class AdminAnalyticsWindow(QMainWindow):
         # === СОЗДАНИЕ ПОЛЬЗОВАТЕЛЯ ===
         id_user = db.create_user(login, password, role, full_name)
         if id_user is None:
-            mb.warning(self, "Не удалось создать пользователя",
-                       f"Логин «{login}» уже используется.\n\n"
-                       f"Измените логин или удалите старого пользователя.")
+            mb.warning(
+                self,
+                "Не удалось создать пользователя",
+                f"Логин «{login}» уже используется.\n\n"
+                f"Измените логин или удалите старого пользователя.",
+            )
             self.ui.loginLine.setFocus()
             self.ui.loginLine.selectAll()
             return
@@ -307,8 +325,7 @@ class AdminAnalyticsWindow(QMainWindow):
         elif role == "patient":
             db.create_patient(id_user, full_name, "2000-01-01", "", "", None)
 
-        mb.info(self, "Пользователь создан",
-                f"«{login}» добавлен.\n\nПароль: {password}")
+        mb.info(self, "Пользователь создан", f"«{login}» добавлен.\n\nПароль: {password}")
 
         self.ui.loginLine.clear()
         self.ui.passwordLine.clear()
@@ -319,14 +336,14 @@ class AdminAnalyticsWindow(QMainWindow):
     def on_delete(self):
         row = self.ui.usersTable.currentRow()
         if row < 0:
-            mb.warning(self, "Не выбран пользователь",
-                       "Кликните по строке таблицы.")
+            mb.warning(self, "Не выбран пользователь", "Кликните по строке таблицы.")
             return
         id_user = int(self.ui.usersTable.item(row, 0).text())
         login = self.ui.usersTable.item(row, 1).text()
 
         reply = QMessageBox.question(
-            self, "Подтверждение удаления",
+            self,
+            "Подтверждение удаления",
             f"Удалить пользователя «{login}»?",
             QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
             QMessageBox.StandardButton.No,
@@ -342,14 +359,14 @@ class AdminAnalyticsWindow(QMainWindow):
     def on_reset_password(self):
         row = self.ui.usersTable.currentRow()
         if row < 0:
-            mb.warning(self, "Не выбран пользователь",
-                       "Кликните по строке таблицы.")
+            mb.warning(self, "Не выбран пользователь", "Кликните по строке таблицы.")
             return
         id_user = int(self.ui.usersTable.item(row, 0).text())
         login = self.ui.usersTable.item(row, 1).text()
 
         reply = QMessageBox.question(
-            self, "Подтверждение сброса",
+            self,
+            "Подтверждение сброса",
             f"Сбросить пароль «{login}»?",
             QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
             QMessageBox.StandardButton.No,
@@ -360,8 +377,7 @@ class AdminAnalyticsWindow(QMainWindow):
         new_password = db.generate_password()
         ok = db.reset_user_password(id_user, new_password)
         if ok:
-            self._show_credentials_dialog(login, new_password,
-                                          title="Пароль сброшен")
+            self._show_credentials_dialog(login, new_password, title="Пароль сброшен")
         else:
             mb.critical(self, "Ошибка", "Не удалось сбросить пароль")
 
@@ -395,14 +411,12 @@ class AdminAnalyticsWindow(QMainWindow):
 
         ok = db.reassign_patient_doctor(id_patient, id_doctor)
         if ok:
-            mb.info(self, "Готово",
-                    f"«{patient_name}» прикреплён к «{doctor_name}»")
+            mb.info(self, "Готово", f"«{patient_name}» прикреплён к «{doctor_name}»")
             self.load_assignments()
         else:
             mb.critical(self, "Ошибка", "Не удалось прикрепить")
 
-    def _show_credentials_dialog(self, login: str, password: str,
-                                 title: str = "Логин и пароль"):
+    def _show_credentials_dialog(self, login: str, password: str, title: str = "Логин и пароль"):
         dlg = QDialog(self)
         dlg.setWindowTitle(title)
         dlg.setMinimumWidth(460)
@@ -450,7 +464,8 @@ class AdminAnalyticsWindow(QMainWindow):
         def copy_all():
             QApplication.clipboard().setText(f"Логин: {login}\nПароль: {password}")
             copy_all_btn.setText("✓ Скопировано")
-            t = QTimer(dlg); t.setSingleShot(True)
+            t = QTimer(dlg)
+            t.setSingleShot(True)
             t.timeout.connect(lambda: copy_all_btn.setText("Скопировать всё"))
             t.start(1500)
 
@@ -475,13 +490,14 @@ class AdminAnalyticsWindow(QMainWindow):
             selected.append(("Линейная — Активность в дневнике", LineChartWidget))
 
         if not selected:
-            mb.warning(self, "Ничего не выбрано",
-                       "Отметьте хотя бы одну диаграмму.")
+            mb.warning(self, "Ничего не выбрано", "Отметьте хотя бы одну диаграмму.")
             return
 
         file_path, _ = QFileDialog.getSaveFileName(
-            self, "Сохранить отчёт как PDF",
-            "analytics_report.pdf", "PDF Files (*.pdf)",
+            self,
+            "Сохранить отчёт как PDF",
+            "analytics_report.pdf",
+            "PDF Files (*.pdf)",
         )
         if not file_path:
             return
@@ -505,19 +521,25 @@ class AdminAnalyticsWindow(QMainWindow):
                     writer.newPage()
 
                 painter.setPen(QColor("#1a1a2e"))
-                tf = QFont("Arial"); tf.setPointSize(28); tf.setBold(True)
+                tf = QFont("Arial")
+                tf.setPointSize(28)
+                tf.setBold(True)
                 painter.setFont(tf)
                 painter.drawText(
                     QRectF(margin, margin, PAGE_W - 2 * margin, 80),
-                    Qt.AlignmentFlag.AlignCenter, "Отчёт по аналитике",
+                    Qt.AlignmentFlag.AlignCenter,
+                    "Отчёт по аналитике",
                 )
 
                 painter.setPen(QColor("#2F5C8F"))
-                lf = QFont("Arial"); lf.setPointSize(20); lf.setBold(True)
+                lf = QFont("Arial")
+                lf.setPointSize(20)
+                lf.setBold(True)
                 painter.setFont(lf)
                 painter.drawText(
                     QRectF(margin, margin + 90, PAGE_W - 2 * margin, 60),
-                    Qt.AlignmentFlag.AlignCenter, name,
+                    Qt.AlignmentFlag.AlignCenter,
+                    name,
                 )
 
                 chart_x = margin
