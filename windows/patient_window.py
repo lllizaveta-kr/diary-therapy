@@ -2,10 +2,10 @@ from datetime import datetime
 
 from PySide6.QtWidgets import (
     QMainWindow, QTableWidgetItem, QHeaderView,
-    QGraphicsOpacityEffect, QGraphicsDropShadowEffect,
+    QGraphicsOpacityEffect, QGraphicsDropShadowEffect, QMessageBox,
 )
 from PySide6.QtGui import QColor, QShortcut, QKeySequence
-from PySide6.QtCore import QDate, QTime, QPropertyAnimation, QEasingCurve
+from PySide6.QtCore import QDate, QTime, QPropertyAnimation, QEasingCurve, QTimer
 
 from ui_py.ui_patient import Ui_PatientWindow
 from windows import msgbox as mb
@@ -103,6 +103,15 @@ class PatientWindow(QMainWindow):
 
         theme.apply_to_window(self, theme.is_dark())
 
+        # === ТАЙМЕР НАПОМИНАНИЙ ===
+        self._notified_today = set()  # чтобы не спамить одним и тем же
+        self.reminder_timer = QTimer(self)
+        self.reminder_timer.timeout.connect(self.check_reminders)
+        self.reminder_timer.start(30_000)  # каждые 30 секунд
+        # Проверяем сразу при запуске, но через 2 секунды,
+        # чтобы окно успело отрисоваться
+        QTimer.singleShot(2000, self.check_reminders)
+
     def go_to(self, index: int, animate: bool = True):
         self.ui.pages.setCurrentIndex(index)
         for i, btn in enumerate(self.nav_buttons):
@@ -164,6 +173,73 @@ class PatientWindow(QMainWindow):
         else:
             self.ui.profDoctor.setText("не назначен")
 
+    # ============== НАПОМИНАНИЯ О ПРИЁМЕ ==============
+    def check_reminders(self):
+        """Проверяет, не пора ли принять лекарство, и показывает уведомление."""
+        try:
+            schedules = db.get_today_schedules_for_patient(self.id_patient)
+        except Exception as e:
+            print(f"Ошибка получения расписания: {e}")
+            return
+
+        if not schedules:
+            return
+
+        now = QTime.currentTime()
+        today_str = QDate.currentDate().toString("yyyy-MM-dd")
+
+        for sched in schedules:
+            id_prescription = sched[0]
+            name_med = sched[1]
+            dose = sched[2]
+            time_of_day = sched[3]
+            instructions = sched[4] or ""
+
+            key = f"{id_prescription}_{time_of_day}_{today_str}"
+            if key in self._notified_today:
+                continue
+
+            # time_of_day из MySQL может быть datetime.timedelta или datetime.time
+            try:
+                if hasattr(time_of_day, "seconds"):
+                    total_sec = time_of_day.seconds
+                    h = total_sec // 3600
+                    m = (total_sec % 3600) // 60
+                else:
+                    h = time_of_day.hour
+                    m = time_of_day.minute
+            except Exception:
+                continue
+
+            sched_time = QTime(h, m)
+            # Разница в минутах между сейчас и временем приёма
+            diff = now.secsTo(sched_time) / 60.0
+
+            # Если время приёма наступило (в пределах ±1 минуты)
+            if -1 <= diff <= 1:
+                self._notified_today.add(key)
+                self._show_reminder(name_med, dose,
+                                    sched_time.toString("HH:mm"), instructions)
+
+    def _show_reminder(self, name_med, dose, time_str, instructions):
+        """Показывает всплывающее окно с напоминанием."""
+        text = (
+            f"💊 Время принять лекарство\n\n"
+            f"Препарат: {name_med}\n"
+            f"Доза: {dose}\n"
+            f"Время: {time_str}"
+        )
+        if instructions:
+            text += f"\n\nИнструкции: {instructions}"
+
+        msg = QMessageBox(self)
+        msg.setWindowTitle("Напоминание о приёме")
+        msg.setIcon(QMessageBox.Icon.Information)
+        msg.setText(text)
+        msg.setStandardButtons(QMessageBox.StandardButton.Ok)
+        msg.exec()
+
+    # ============== ДНЕВНИК ==============
     def _collect_symptoms(self):
         checks = [
             (self.ui.chkHeadache, "головная боль"),
@@ -195,11 +271,43 @@ class PatientWindow(QMainWindow):
         return [name for chk, name in checks if chk.isChecked()]
 
     def save_diary(self):
+        from validators import (validate_pressure, validate_pulse,
+                                validate_sugar, validate_temperature,
+                                validate_height, validate_weight)
+
         well_being = self.ui.wellBeingCombo.currentText()
         intensity = self.ui.intensitySlider.value()
         symptoms = self._collect_symptoms()
         triggers = self._collect_triggers()
         notes = self.ui.notesText.toPlainText().strip()
+
+        # === ВАЛИДАЦИЯ ===
+        pressure = self.ui.pressureLine.text().strip()
+        pulse = self.ui.pulseLine.text().strip()
+        sugar = self.ui.sugarLine.text().strip()
+        temp = self.ui.tempLine.text().strip()
+        height = self.ui.heightLine.text().strip() if hasattr(self.ui, "heightLine") else ""
+        weight = self.ui.weightLine.text().strip() if hasattr(self.ui, "weightLine") else ""
+
+        checks = [
+            ("Давление", validate_pressure(pressure)),
+            ("Пульс", validate_pulse(pulse)),
+            ("Сахар", validate_sugar(sugar)),
+            ("Температура", validate_temperature(temp)),
+            ("Рост", validate_height(height)),
+            ("Вес", validate_weight(weight)),
+        ]
+
+        for field_name, (ok, err) in checks:
+            if not ok:
+                mb.warning(self, f"Ошибка в поле «{field_name}»", err)
+                return
+
+        if not notes and not symptoms and intensity == 0:
+            mb.warning(self, "Пустая запись",
+                       "Заполните хотя бы что-то: симптомы, показатели или заметки.")
+            return
+        # === КОНЕЦ ВАЛИДАЦИИ ===
 
         parts = [well_being]
         if intensity > 0:
@@ -212,13 +320,7 @@ class PatientWindow(QMainWindow):
 
         symptoms_text = ", ".join(symptoms) if symptoms else "нет"
 
-        pressure = self.ui.pressureLine.text().strip()
-        pulse = self.ui.pulseLine.text().strip()
-        sugar = self.ui.sugarLine.text().strip()
-        temp = self.ui.tempLine.text().strip()
-        height = self.ui.heightLine.text().strip() if hasattr(self.ui, "heightLine") else ""
-        weight = self.ui.weightLine.text().strip() if hasattr(self.ui, "weightLine") else ""
-
+        # === СОХРАНЕНИЕ В БД ===
         today = QDate.currentDate().toString("yyyy-MM-dd")
         now = QTime.currentTime().toString("HH:mm:ss")
 
@@ -244,6 +346,7 @@ class PatientWindow(QMainWindow):
 
         mb.info(self, "Готово", "Запись сохранена")
 
+        # === ОЧИСТКА ФОРМЫ ===
         self.ui.wellBeingCombo.setCurrentIndex(0)
         self.ui.intensitySlider.setValue(0)
         for chk in (self.ui.chkHeadache, self.ui.chkWeakness,

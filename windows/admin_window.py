@@ -270,22 +270,36 @@ class AdminAnalyticsWindow(QMainWindow):
         full_name = self.ui.fullNameLine.text().strip()
         role = self.ui.roleCombo.currentText()
 
-        if not login or len(login) < 3:
-            mb.warning(self, "Проблема с логином",
-                       "Логин должен содержать минимум 3 символа.")
-            return
-        if not password or len(password) < 6:
-            mb.warning(self, "Проблема с паролем",
-                       "Пароль должен содержать минимум 6 символов.")
-            return
-        if not full_name:
-            mb.warning(self, "Не заполнено ФИО", "Введите полное имя.")
+        # === ВАЛИДАЦИЯ ===
+        from validators import validate_login, validate_password, validate_name
+
+        ok, err = validate_login(login)
+        if not ok:
+            mb.warning(self, "Ошибка в логине", err)
+            self.ui.loginLine.setFocus()
             return
 
+        ok, err = validate_password(password)
+        if not ok:
+            mb.warning(self, "Ошибка в пароле", err)
+            self.ui.passwordLine.setFocus()
+            return
+
+        ok, err = validate_name(full_name)
+        if not ok:
+            mb.warning(self, "Ошибка в ФИО", err)
+            self.ui.fullNameLine.setFocus()
+            return
+        # === КОНЕЦ ВАЛИДАЦИИ ===
+
+        # === СОЗДАНИЕ ПОЛЬЗОВАТЕЛЯ ===
         id_user = db.create_user(login, password, role, full_name)
         if id_user is None:
-            mb.warning(self, "Не удалось создать",
-                       f"Логин «{login}» уже используется.")
+            mb.warning(self, "Не удалось создать пользователя",
+                       f"Логин «{login}» уже используется.\n\n"
+                       f"Измените логин или удалите старого пользователя.")
+            self.ui.loginLine.setFocus()
+            self.ui.loginLine.selectAll()
             return
 
         if role == "doctor":

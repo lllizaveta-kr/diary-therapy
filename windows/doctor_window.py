@@ -7,6 +7,7 @@ from PySide6.QtWidgets import (
     QDialog, QVBoxLayout, QHBoxLayout, QLabel, QPushButton,
     QLineEdit, QApplication, QFrame, QSizePolicy,
     QScrollArea, QWidget, QListWidget, QInputDialog,
+    QMessageBox, QTableWidget,
 )
 from PySide6.QtGui import QColor, QShortcut, QKeySequence
 from PySide6.QtCore import QDate, QPropertyAnimation, QEasingCurve, Qt, QTimer
@@ -143,16 +144,39 @@ class DoctorWindow(QMainWindow):
 
     # ============== СОЗДАНИЕ ПАЦИЕНТА ==============
     def create_patient(self):
+        from validators import (validate_name, validate_phone,
+                                validate_policy, validate_birth_date)
+
         full_name = self.ui.newPatientFullName.text().strip()
         policy = self.ui.newPatientPolicy.text().strip()
         phone = self.ui.newPatientPhone.text().strip()
         gender = self.ui.newPatientGender.currentText()
         birth = self.ui.newPatientBirthDate.date().toString("yyyy-MM-dd")
 
-        if not full_name:
-            mb.warning(self, "Не заполнено ФИО", "Введите ФИО нового пациента.")
+        # === ВАЛИДАЦИЯ ===
+        ok, err = validate_name(full_name)
+        if not ok:
+            mb.warning(self, "Ошибка в ФИО", err)
             self.ui.newPatientFullName.setFocus()
             return
+
+        ok, err = validate_policy(policy)
+        if not ok:
+            mb.warning(self, "Ошибка в полисе", err)
+            self.ui.newPatientPolicy.setFocus()
+            return
+
+        ok, err = validate_phone(phone)
+        if not ok:
+            mb.warning(self, "Ошибка в телефоне", err)
+            self.ui.newPatientPhone.setFocus()
+            return
+
+        ok, err = validate_birth_date(birth)
+        if not ok:
+            mb.warning(self, "Ошибка в дате рождения", err)
+            return
+        # === КОНЕЦ ВАЛИДАЦИИ ===
 
         login_base = db.generate_login(full_name)
         login = login_base
@@ -392,16 +416,180 @@ class DoctorWindow(QMainWindow):
             id_patient, self.id_doctor, id_medication,
             dosage, freq, start, end, comment,
         )
-        if ok:
-            mb.info(self, "Готово", "Назначение добавлено")
-            self.ui.medicationSearch.clear()
-            self.ui.dosageLine.clear()
-            self.ui.freqLine.clear()
-            self.ui.commentText.clear()
-            self._selected_medication_id = None
-            self.load_medications()
-        else:
+        if not ok:
             mb.critical(self, "Ошибка", "Не удалось создать назначение")
+            return
+
+        # Спрашиваем врача: настроить расписание?
+        reply = QMessageBox.question(
+            self, "Расписание приёма",
+            "Назначение создано.\n\n"
+            "Хотите указать точное время приёма (например, 8:00, 14:00, 20:00)?\n"
+            "Пациент получит напоминания в эти часы.",
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+            QMessageBox.StandardButton.Yes,
+        )
+
+        if reply == QMessageBox.StandardButton.Yes:
+            id_prescription = db.get_last_prescription_id()
+            if id_prescription:
+                self._open_schedule_dialog(id_prescription, dosage)
+
+        mb.info(self, "Готово", "Назначение добавлено")
+        self.ui.medicationSearch.clear()
+        self.ui.dosageLine.clear()
+        self.ui.freqLine.clear()
+        self.ui.commentText.clear()
+        self._selected_medication_id = None
+        self.load_medications()
+
+    def _open_schedule_dialog(self, id_prescription, default_dose):
+        """Диалог настройки расписания приёма."""
+        dlg = QDialog(self)
+        dlg.setWindowTitle("Расписание приёма")
+        dlg.setMinimumWidth(560)
+        dlg.setStyleSheet("""
+            QDialog { background-color: #FFFFFF; }
+            QLabel { color: #1A1A1A; font-family: "Times New Roman"; font-size: 13px; }
+            QLineEdit { background-color: #FFFFFF; color: #1A1A1A; border: 1px solid #CCCCCC;
+                border-radius: 8px; padding: 8px 12px; font-family: "Times New Roman"; font-size: 14px; }
+            QTableWidget { background-color: #FFFFFF; color: #1A1A1A; border: 1px solid #CCCCCC;
+                border-radius: 8px; font-family: "Times New Roman"; font-size: 13px; }
+            QHeaderView::section { background-color: #F0F4FA; padding: 6px;
+                font-family: "Times New Roman"; font-size: 12px; border: none; }
+        """)
+
+        layout = QVBoxLayout(dlg)
+        layout.setContentsMargins(20, 20, 20, 20)
+        layout.setSpacing(12)
+
+        info = QLabel(
+            "Укажите, во сколько пациент должен принимать препарат.\n"
+            "Можно добавить несколько времён (например, 8:00, 14:00, 20:00)."
+        )
+        info.setStyleSheet("color: #666666; font-size: 12px;")
+        info.setWordWrap(True)
+        layout.addWidget(info)
+
+        table = QTableWidget()
+        table.setColumnCount(3)
+        table.setHorizontalHeaderLabels(["Время (HH:MM)", "Доза", "Инструкции"])
+        table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
+        table.setRowCount(0)
+        layout.addWidget(table)
+
+        add_row = QHBoxLayout()
+        time_input = QLineEdit()
+        time_input.setPlaceholderText("08:00")
+        time_input.setMaximumWidth(90)
+
+        dose_input = QLineEdit(default_dose)
+
+        instr_input = QLineEdit()
+        instr_input.setPlaceholderText("Например: после еды")
+
+        add_row.addWidget(QLabel("Время:"))
+        add_row.addWidget(time_input)
+        add_row.addWidget(QLabel("Доза:"))
+        add_row.addWidget(dose_input)
+        add_row.addWidget(QLabel("Инструкции:"))
+        add_row.addWidget(instr_input, 1)
+        layout.addLayout(add_row)
+
+        def add_time():
+            t = time_input.text().strip()
+            if not t:
+                mb.warning(dlg, "Ошибка", "Введите время в формате HH:MM")
+                return
+            if not re.match(r"^\d{1,2}:\d{2}$", t):
+                mb.warning(dlg, "Ошибка", "Время в формате HH:MM (например, 08:00)")
+                return
+            h, m = t.split(":")
+            h, m = int(h), int(m)
+            if not (0 <= h <= 23 and 0 <= m <= 59):
+                mb.warning(dlg, "Ошибка", "Некорректное время")
+                return
+            t_full = f"{h:02d}:{m:02d}:00"
+
+            row = table.rowCount()
+            table.insertRow(row)
+            table.setItem(row, 0, QTableWidgetItem(t_full))
+            table.setItem(row, 1, QTableWidgetItem(dose_input.text().strip() or default_dose))
+            table.setItem(row, 2, QTableWidgetItem(instr_input.text().strip()))
+
+            time_input.clear()
+            instr_input.clear()
+            time_input.setFocus()
+
+        def remove_selected():
+            row = table.currentRow()
+            if row >= 0:
+                table.removeRow(row)
+
+        btn_row = QHBoxLayout()
+        add_btn = QPushButton("Добавить время")
+        add_btn.setCursor(Qt.CursorShape.PointingHandCursor)
+        add_btn.setStyleSheet("""
+            QPushButton { background-color: #7A9CC6; color: white; border: none;
+                border-radius: 8px; padding: 8px 16px; font-size: 13px; }
+            QPushButton:hover { background-color: #6A8CB6; }
+        """)
+        add_btn.clicked.connect(add_time)
+
+        remove_btn = QPushButton("Удалить выбранное")
+        remove_btn.setCursor(Qt.CursorShape.PointingHandCursor)
+        remove_btn.setStyleSheet("""
+            QPushButton { background-color: #E0E0E0; color: #1A1A1A; border: none;
+                border-radius: 8px; padding: 8px 16px; font-size: 13px; }
+            QPushButton:hover { background-color: #D0D0D0; }
+        """)
+        remove_btn.clicked.connect(remove_selected)
+
+        btn_row.addWidget(add_btn)
+        btn_row.addWidget(remove_btn)
+        btn_row.addStretch()
+        layout.addLayout(btn_row)
+
+        save_row = QHBoxLayout()
+        save_btn = QPushButton("Сохранить расписание")
+        save_btn.setCursor(Qt.CursorShape.PointingHandCursor)
+        save_btn.setStyleSheet("""
+            QPushButton { background-color: #2F5C8F; color: white; border: none;
+                border-radius: 8px; padding: 10px 20px; font-size: 14px; }
+            QPushButton:hover { background-color: #1E4470; }
+        """)
+
+        cancel_btn = QPushButton("Отмена")
+        cancel_btn.setCursor(Qt.CursorShape.PointingHandCursor)
+        cancel_btn.setStyleSheet("""
+            QPushButton { background-color: #E0E0E0; color: #1A1A1A; border: none;
+                border-radius: 8px; padding: 10px 20px; font-size: 14px; }
+            QPushButton:hover { background-color: #D0D0D0; }
+        """)
+
+        def save_schedule():
+            if table.rowCount() == 0:
+                mb.warning(dlg, "Пусто", "Добавьте хотя бы одно время приёма.")
+                return
+            saved = 0
+            for r in range(table.rowCount()):
+                t = table.item(r, 0).text()
+                d = table.item(r, 1).text() if table.item(r, 1) else default_dose
+                instr = table.item(r, 2).text() if table.item(r, 2) else ""
+                if db.create_prescription_schedule(id_prescription, t, d, instr):
+                    saved += 1
+            mb.info(dlg, "Готово", f"Сохранено времён: {saved}")
+            dlg.accept()
+
+        save_btn.clicked.connect(save_schedule)
+        cancel_btn.clicked.connect(dlg.reject)
+
+        save_row.addStretch()
+        save_row.addWidget(cancel_btn)
+        save_row.addWidget(save_btn)
+        layout.addLayout(save_row)
+
+        dlg.exec()
 
     # ============== ДНЕВНИК ==============
     def _parse_wellbeing(self, text: str):

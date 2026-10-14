@@ -576,3 +576,76 @@ def reassign_patient_doctor(id_patient, id_doctor):
         return False
     finally:
         conn.close()
+
+# ============== РАСПИСАНИЕ ПРИЁМА ==============
+def create_prescription_schedule(id_prescription, time_of_day, dose, instructions):
+    """Добавляет время приёма в расписание назначения.
+    time_of_day — строка 'HH:MM:SS'."""
+    conn = get_connection()
+    if not conn: return False
+    try:
+        cur = conn.cursor()
+        cur.execute("""
+            INSERT INTO prescription_schedules 
+            (id_prescription, time_of_day, dose, instructions)
+            VALUES (%s, %s, %s, %s)
+        """, (id_prescription, time_of_day, dose, instructions))
+        conn.commit()
+        return True
+    except mysql.connector.Error as err:
+        print(f"Ошибка добавления расписания: {err}")
+        return False
+    finally:
+        conn.close()
+
+
+def get_schedules_for_prescription(id_prescription):
+    """Возвращает список времён приёма для назначения."""
+    conn = get_connection()
+    if not conn: return []
+    try:
+        cur = conn.cursor()
+        cur.execute("""
+            SELECT id_schedule, time_of_day, dose, instructions
+            FROM prescription_schedules
+            WHERE id_prescription = %s
+            ORDER BY time_of_day
+        """, (id_prescription,))
+        return cur.fetchall()
+    finally:
+        conn.close()
+
+
+def get_today_schedules_for_patient(id_patient):
+    """Все приёмы на сегодня для пациента.
+    Возвращает список: (id_prescription, name_med, dose, time_of_day, instructions)"""
+    conn = get_connection()
+    if not conn: return []
+    try:
+        cur = conn.cursor()
+        cur.execute("""
+            SELECT ps.id_prescription, m.name_med, ps.dose, ps.time_of_day, ps.instructions
+            FROM prescription_schedules ps
+            JOIN prescriptions p ON p.id_prescription = ps.id_prescription
+            JOIN medications m ON m.id_medication = p.id_medication
+            WHERE p.id_patient = %s
+              AND p.statuss = 'active'
+              AND CURDATE() BETWEEN p.start_date AND p.end_date
+            ORDER BY ps.time_of_day
+        """, (id_patient,))
+        return cur.fetchall()
+    finally:
+        conn.close()
+
+
+def get_last_prescription_id():
+    """Возвращает id последнего созданного назначения."""
+    conn = get_connection()
+    if not conn: return None
+    try:
+        cur = conn.cursor()
+        cur.execute("SELECT MAX(id_prescription) FROM prescriptions")
+        row = cur.fetchone()
+        return row[0] if row else None
+    finally:
+        conn.close()
