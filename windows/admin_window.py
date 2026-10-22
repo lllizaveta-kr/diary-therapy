@@ -1,55 +1,120 @@
-from PySide6.QtCore import Qt, QRectF, QTimer
+"""Панель администратора в виде CRM клиники.
+
+Разделы оформлены как вкладки-папки: Аналитика, Пациенты, Врачи,
+Учётные записи, Журнал. Вместо таблиц — карточки с анимацией;
+клик по карточке открывает выезжающую справа панель с подробностями
+и действиями (как карточка клиента в CRM).
+"""
+
+import re
+
+from PySide6.QtCore import QDate, QRectF, Qt, QTimer
 from PySide6.QtGui import (
-    QColor,
-    QPainter,
-    QPen,
     QBrush,
+    QColor,
     QFont,
-    QPixmap,
-    QPageSize,
+    QKeySequence,
     QPageLayout,
+    QPageSize,
+    QPainter,
     QPdfWriter,
+    QPen,
+    QPixmap,
+    QShortcut,
 )
 from PySide6.QtWidgets import (
-    QMainWindow,
-    QWidget,
-    QFileDialog,
-    QTableWidgetItem,
-    QGraphicsDropShadowEffect,
     QApplication,
-    QHeaderView,
+    QCheckBox,
+    QComboBox,
+    QDateEdit,
     QDialog,
-    QVBoxLayout,
+    QFileDialog,
+    QFrame,
+    QGridLayout,
     QHBoxLayout,
     QLabel,
-    QPushButton,
     QLineEdit,
-    QMessageBox,
+    QMainWindow,
+    QPushButton,
+    QVBoxLayout,
+    QWidget,
 )
 
 import db
-import theme
-from ui_py.ui_admin import Ui_AdminAnalyticsWindow
+from validators import (
+    validate_birth_date,
+    validate_login,
+    validate_name,
+    validate_password,
+    validate_phone,
+    validate_policy,
+)
+from windows import common
 from windows import msgbox as mb
+from windows import widgets as w
+
+SPECIALTIES = [
+    "Терапевт",
+    "Кардиолог",
+    "Эндокринолог",
+    "Невролог",
+    "Гастроэнтеролог",
+    "Пульмонолог",
+    "Педиатр",
+    "Хирург",
+]
+
+# действие в журнале -> (подпись, имя векторной иконки из widgets.draw_icon)
+ACTION_NAMES = {
+    "create_user": ("Создана учётная запись", "plus"),
+    "delete_user": ("Удалена учётная запись", "trash"),
+    "reset_password": ("Сброшен пароль", "key"),
+    "reassign_doctor": ("Пациент прикреплён к врачу", "link"),
+    "update_doctor": ("Обновлён профиль врача", "edit"),
+    "update_patient": ("Обновлён профиль пациента", "edit"),
+    "doctor_photo": ("Загружено фото врача", "camera"),
+    "create_prescription": ("Создано назначение", "pill"),
+    "set_diagnosis": ("Поставлен диагноз", "stethoscope"),
+    "export_pdf": ("Выгружен PDF-отчёт", "file"),
+}
+
+# Оттенки исходного синего — от тёмного к светлому
+TAB_COLORS = ["#163257", "#1E4470", "#2F5C8F", "#5A7CA6", "#7A9CC6"]
 
 
+# ============== ДИАГРАММЫ (без изменений по логике) ==============
 class ChartWidget(QWidget):
     def __init__(self, title: str = ""):
         super().__init__()
         self.title = title
+        self.print_mode = False  # для PDF всегда рисуем на белом
         self.setMinimumHeight(220)
 
+    def _colors(self):
+        if self.print_mode:
+            return w.LIGHT
+        return w.pal()
+
+    def reload(self):
+        self.update()
+
     def paintEvent(self, event):
+        c = self._colors()
         painter = QPainter(self)
         painter.setRenderHint(QPainter.RenderHint.Antialiasing)
-        painter.fillRect(self.rect(), QColor("#ffffff"))
-        painter.setPen(QColor("#2b2b3c"))
-        font = QFont("Arial")
+        painter.fillRect(self.rect(), QColor(c["card"]))
+        painter.setPen(QColor(c["text"]))
+        font = QFont(w.FONT)
         font.setPointSize(11)
         font.setBold(True)
         painter.setFont(font)
         painter.drawText(QRectF(0, 4, self.width(), 26), Qt.AlignmentFlag.AlignCenter, self.title)
         self.draw_content(painter, QRectF(0, 34, self.width(), self.height() - 34))
+
+    def _no_data(self, painter, rect):
+        painter.setPen(QColor(self._colors()["muted"]))
+        painter.setFont(QFont(w.FONT, 10))
+        painter.drawText(rect, Qt.AlignmentFlag.AlignCenter, "Нет данных")
 
     def draw_content(self, painter, rect):
         pass
@@ -58,20 +123,23 @@ class ChartWidget(QWidget):
 class BarChartWidget(ChartWidget):
     def __init__(self):
         super().__init__("Пациенты по врачам")
+        self.reload()
+
+    def reload(self):
         self.labels, self.data = db.get_patients_by_doctor()
+        self.update()
 
     def draw_content(self, painter, rect):
         if not self.data:
-            painter.setPen(QColor("#7a7a8c"))
-            painter.setFont(QFont("Arial", 10))
-            painter.drawText(rect, Qt.AlignmentFlag.AlignCenter, "Нет данных")
+            self._no_data(painter, rect)
             return
+        c = self._colors()
         margin = 30
         chart_rect = rect.adjusted(margin, 10, -10, -22)
         max_val = max(self.data) or 1
         gap = chart_rect.width() / len(self.data)
         bar_w = gap * 0.6
-        painter.setFont(QFont("Arial", 8))
+        painter.setFont(QFont(w.FONT, 8))
         for i, val in enumerate(self.data):
             h = chart_rect.height() * val / max_val
             x = chart_rect.left() + i * gap + (gap - bar_w) / 2
@@ -79,12 +147,12 @@ class BarChartWidget(ChartWidget):
             painter.setBrush(QBrush(QColor("#2F5C8F")))
             painter.setPen(Qt.PenStyle.NoPen)
             painter.drawRoundedRect(QRectF(x, y, bar_w, h), 5, 5)
-            painter.setPen(QColor("#2b2b3c"))
+            painter.setPen(QColor(c["text"]))
             painter.drawText(QRectF(x, y - 16, bar_w, 16), Qt.AlignmentFlag.AlignCenter, str(val))
             painter.drawText(
-                QRectF(x, chart_rect.bottom() + 2, bar_w, 16),
+                QRectF(x - gap * 0.2, chart_rect.bottom() + 2, bar_w + gap * 0.4, 16),
                 Qt.AlignmentFlag.AlignCenter,
-                str(self.labels[i]),
+                w.short_name(str(self.labels[i])),
             )
 
 
@@ -100,14 +168,17 @@ class PieChartWidget(ChartWidget):
 
     def __init__(self):
         super().__init__("Приверженность лечению")
+        self.reload()
+
+    def reload(self):
         self.data = db.get_adherence()
+        self.update()
 
     def draw_content(self, painter, rect):
         if not self.data:
-            painter.setPen(QColor("#7a7a8c"))
-            painter.setFont(QFont("Arial", 10))
-            painter.drawText(rect, Qt.AlignmentFlag.AlignCenter, "Нет данных")
+            self._no_data(painter, rect)
             return
+        c = self._colors()
         total = sum(v for _, v in self.data) or 1
         size = min(rect.width() * 0.55, rect.height() - 20)
         cx = rect.left() + 15
@@ -118,10 +189,10 @@ class PieChartWidget(ChartWidget):
             span = int(360 * 16 * val / total)
             color = self.COLORS[i % len(self.COLORS)]
             painter.setBrush(QBrush(color))
-            painter.setPen(QPen(QColor("#ffffff"), 2))
+            painter.setPen(QPen(QColor(c["card"]), 2))
             painter.drawPie(pie_rect, start_angle, -span)
             start_angle -= span
-        painter.setFont(QFont("Arial", 8))
+        painter.setFont(QFont(w.FONT, 8))
         lx = cx + size + 12
         ly = cy + 10
         for i, (name, val) in enumerate(self.data):
@@ -129,9 +200,9 @@ class PieChartWidget(ChartWidget):
             painter.setBrush(QBrush(color))
             painter.setPen(Qt.PenStyle.NoPen)
             painter.drawRoundedRect(QRectF(lx, ly, 12, 12), 3, 3)
-            painter.setPen(QColor("#2b2b3c"))
+            painter.setPen(QColor(c["text"]))
             painter.drawText(
-                QRectF(lx + 18, ly, 140, 14),
+                QRectF(lx + 18, ly, 160, 14),
                 Qt.AlignmentFlag.AlignVCenter,
                 f"{name} — {val}",
             )
@@ -141,16 +212,19 @@ class PieChartWidget(ChartWidget):
 class LineChartWidget(ChartWidget):
     def __init__(self):
         super().__init__("Активность в дневнике (14 дней)")
+        self.reload()
+
+    def reload(self):
         self.labels, self.data = db.get_diary_dynamics()
+        self.update()
 
     def draw_content(self, painter, rect):
         if not self.data:
-            painter.setPen(QColor("#7a7a8c"))
-            painter.setFont(QFont("Arial", 10))
-            painter.drawText(rect, Qt.AlignmentFlag.AlignCenter, "Нет данных")
+            self._no_data(painter, rect)
             return
+        c = self._colors()
         margin = 30
-        chart_rect = rect.adjusted(margin, 15, -10, -22)
+        chart_rect = rect.adjusted(margin, 15, -28, -22)
         max_val = max(self.data) or 1
         step_x = chart_rect.width() / max(1, len(self.data) - 1)
         points = []
@@ -166,12 +240,12 @@ class LineChartWidget(ChartWidget):
                 int(points[i + 1][0]),
                 int(points[i + 1][1]),
             )
-        painter.setFont(QFont("Arial", 8))
+        painter.setFont(QFont(w.FONT, 8))
         for i, (x, y) in enumerate(points):
             painter.setBrush(QBrush(QColor("#2F5C8F")))
-            painter.setPen(QPen(QColor("#ffffff"), 2))
+            painter.setPen(QPen(QColor(c["card"]), 2))
             painter.drawEllipse(QRectF(x - 4, y - 4, 8, 8))
-            painter.setPen(QColor("#2b2b3c"))
+            painter.setPen(QColor(c["text"]))
             painter.drawText(
                 QRectF(x - 20, y - 20, 40, 14),
                 Qt.AlignmentFlag.AlignCenter,
@@ -184,309 +258,1072 @@ class LineChartWidget(ChartWidget):
             )
 
 
+# ============== КАРТОЧКИ ==============
+class PatientCard(w.AnimatedCard):
+    def __init__(self, p):
+        mood, mood_color = w.mood_of(p["last_wellbeing"])
+        super().__init__(width=310, accent=mood_color)
+        pl = w.pal()
+        self.data = p
+
+        top = QHBoxLayout()
+        top.setSpacing(12)
+        top.addWidget(w.Avatar(p["full_name"], 52))
+        name_col = QVBoxLayout()
+        name_col.setSpacing(2)
+        name_col.addWidget(w.label(p["full_name"], 11, bold=True, wrap=True))
+        age = common.age(p["birth_date"])
+        meta = " · ".join(x for x in (common.years(age) if age is not None else "", p["gender"] or "") if x)
+        name_col.addWidget(w.label(meta or "данные не заполнены", 9, color=pl["muted"]))
+        top.addLayout(name_col, 1)
+        self.body_layout.addLayout(top)
+
+        # Полоска самочувствия
+        mood_row = QHBoxLayout()
+        mood_row.setSpacing(8)
+        dot = QLabel()
+        dot.setFixedSize(10, 10)
+        dot.setStyleSheet(f"background: {mood_color}; border-radius: 5px;")
+        mood_row.addWidget(dot)
+        when = p["last_entry"].strftime("%d.%m") if p["last_entry"] else ""
+        mood_text = f"{mood} · {when}" if when else "Дневник пока пуст"
+        mood_row.addWidget(w.label(mood_text, 9, color=pl["text"]))
+        mood_row.addStretch()
+        self.body_layout.addLayout(mood_row)
+
+        line = QFrame()
+        line.setFixedHeight(1)
+        line.setStyleSheet(f"background: {pl['line']};")
+        self.body_layout.addWidget(line)
+
+        doc_row = QHBoxLayout()
+        doc_row.setSpacing(8)
+        if p["doctor_name"]:
+            doc_row.addWidget(
+                w.Avatar(p["doctor_name"], 26, w.doctor_photo_path(p["doctor_photo"]))
+            )
+            doc_col = QVBoxLayout()
+            doc_col.setSpacing(0)
+            doc_col.addWidget(w.label(w.short_name(p["doctor_name"]), 9, bold=True))
+            doc_col.addWidget(w.label(p["specialty"] or "", 8, color=pl["muted"]))
+            doc_row.addLayout(doc_col, 1)
+        else:
+            doc_row.addWidget(w.chip("Без лечащего врача", pl["warn_soft"], pl["warn"]))
+            doc_row.addStretch()
+        self.body_layout.addLayout(doc_row)
+
+        stats = QHBoxLayout()
+        stats.setSpacing(6)
+        stats.addWidget(
+            w.chip(w.plural(p["active_rx"], "назначение", "назначения", "назначений"),
+                   pl["accent_soft"], pl["accent"])
+        )
+        stats.addWidget(
+            w.chip(w.plural(p["diary_count"], "запись", "записи", "записей"), pl["card_alt"], pl["muted"])
+        )
+        stats.addStretch()
+        self.body_layout.addLayout(stats)
+
+
+class DoctorCard(w.AnimatedCard):
+    def __init__(self, d):
+        super().__init__(width=258, accent=w.ROLE_COLORS["doctor"])
+        pl = w.pal()
+        self.data = d
+        self.body_layout.setContentsMargins(12, 12, 12, 16)
+
+        photo = w.Avatar(
+            d["full_name"], 210, w.doctor_photo_path(d["photo"]), shape="rounded", height=196
+        )
+        self.body_layout.addWidget(photo, 0, Qt.AlignmentFlag.AlignHCenter)
+        if not photo.has_photo():
+            hint = w.label("фото не загружено", 8, color=pl["accent_light"])
+            hint.setAlignment(Qt.AlignmentFlag.AlignCenter)
+            self.body_layout.addWidget(hint)
+
+        info = QVBoxLayout()
+        info.setContentsMargins(6, 4, 6, 0)
+        info.setSpacing(6)
+        info.addWidget(w.label(d["full_name"], 11, bold=True, wrap=True))
+        info.addWidget(w.chip(d["specialty"] or "Специальность не указана", pl["accent"]))
+        place = " · ".join(x for x in (f"каб. {d['office']}" if d["office"] else "", d["schedule"] or "") if x)
+        if place:
+            info.addWidget(w.label(place, 9, color=pl["muted"], wrap=True))
+        stats = QHBoxLayout()
+        stats.setSpacing(6)
+        stats.addWidget(
+            w.chip(w.plural(d["patients_count"], "пациент", "пациента", "пациентов"),
+                   pl["accent_soft"], pl["accent"])
+        )
+        stats.addWidget(
+            w.chip(w.plural(d["active_rx"], "назначение", "назначения", "назначений"),
+                   pl["card_alt"], pl["muted"])
+        )
+        stats.addStretch()
+        info.addLayout(stats)
+        self.body_layout.addLayout(info)
+
+
+class UserCard(w.AnimatedCard):
+    def __init__(self, u, is_me=False):
+        color = w.ROLE_COLORS.get(u["role"], "#2F5C8F")
+        super().__init__(width=300, accent=color)
+        pl = w.pal()
+        self.data = u
+        row = QHBoxLayout()
+        row.setSpacing(12)
+        row.addWidget(w.Avatar(u["full_name"], 46, w.doctor_photo_path(u["photo"]), ring=color))
+        col = QVBoxLayout()
+        col.setSpacing(2)
+        col.addWidget(w.label(u["full_name"], 10, bold=True, wrap=True))
+        login = w.label(f"@{u['login']}", 9, color=pl["muted"])
+        login.setFont(QFont("Consolas", 9))
+        col.addWidget(login)
+        row.addLayout(col, 1)
+        self.body_layout.addLayout(row)
+        bottom = QHBoxLayout()
+        bottom.addWidget(w.chip(w.ROLE_NAMES.get(u["role"], u["role"]), color))
+        if is_me:
+            bottom.addWidget(w.chip("это вы", pl["ok_soft"], pl["ok"]))
+        bottom.addStretch()
+        created = u["created_at"].strftime("%d.%m.%Y") if u["created_at"] else ""
+        bottom.addWidget(w.label(created, 8, color=pl["muted"]))
+        self.body_layout.addLayout(bottom)
+
+
+class JournalRow(w.AnimatedCard):
+    def __init__(self, a):
+        color = w.ROLE_COLORS.get(a["role"] or "", "#7A9CC6")
+        super().__init__(accent=color, clickable=False)
+        pl = w.pal()
+        self.body_layout.setContentsMargins(16, 10, 16, 10)
+        row = QHBoxLayout()
+        row.setSpacing(12)
+        title, icon = ACTION_NAMES.get(a["action"], (a["action"], ""))
+        row.addWidget(w.Icon(icon, 36, pl["accent"], pl["accent_soft"], 18))
+        col = QVBoxLayout()
+        col.setSpacing(0)
+        col.addWidget(w.label(title, 10, bold=True))
+        who = a["full_name"] or "удалённый пользователь"
+        role = w.ROLE_NAMES.get(a["role"] or "", "")
+        col.addWidget(w.label(f"{who}" + (f" · {role}" if role else ""), 9, color=pl["muted"]))
+        row.addLayout(col, 1)
+        ts = a["ts"].strftime("%d.%m.%Y  %H:%M") if a["ts"] else ""
+        row.addWidget(w.label(ts, 9, color=pl["muted"]))
+        self.body_layout.addLayout(row)
+
+
+# ============== ДИАЛОГИ ==============
+class CreateUserDialog(QDialog):
+    """Создание учётной записи. Поля меняются в зависимости от роли:
+    для врача — специальность, кабинет, фото; для пациента — анкета и врач."""
+
+    def __init__(self, parent, role="patient"):
+        super().__init__(parent)
+        pl = w.pal()
+        self.result_data = None
+        self._photo_src = None
+        self._login_edited = False
+        self.setWindowTitle("Новая учётная запись")
+        self.setMinimumWidth(520)
+        self.setStyleSheet(f"QDialog {{ background: {pl['bg']}; }}" + w.input_qss())
+
+        lay = QVBoxLayout(self)
+        lay.setContentsMargins(26, 22, 26, 22)
+        lay.setSpacing(10)
+        lay.addWidget(w.label("Новая учётная запись", 15, bold=True))
+
+        self.role = w.SegmentedFilter(
+            [("patient", "Пациент"), ("doctor", "Врач"), ("admin", "Администратор")]
+        )
+        lay.addWidget(self.role)
+
+        grid = QGridLayout()
+        grid.setHorizontalSpacing(12)
+        grid.setVerticalSpacing(6)
+        self.full_name = QLineEdit()
+        self.full_name.setPlaceholderText("Фамилия Имя Отчество")
+        self.login = QLineEdit()
+        self.login.setPlaceholderText("латиница, цифры, _")
+        self.password = QLineEdit(db.generate_password())
+        regen = w.ghost_button("↻")
+        regen.setFixedWidth(46)
+        regen.setToolTip("Сгенерировать новый пароль")
+        regen.clicked.connect(lambda: self.password.setText(db.generate_password()))
+        pass_row = QHBoxLayout()
+        pass_row.addWidget(self.password, 1)
+        pass_row.addWidget(regen)
+
+        grid.addWidget(w.label("ФИО", 9, color=pl["muted"]), 0, 0, 1, 2)
+        grid.addWidget(self.full_name, 1, 0, 1, 2)
+        grid.addWidget(w.label("Логин", 9, color=pl["muted"]), 2, 0)
+        grid.addWidget(w.label("Пароль", 9, color=pl["muted"]), 2, 1)
+        grid.addWidget(self.login, 3, 0)
+        grid.addLayout(pass_row, 3, 1)
+        lay.addLayout(grid)
+
+        # --- поля врача ---
+        self.doctor_box = QWidget()
+        dg = QGridLayout(self.doctor_box)
+        dg.setContentsMargins(0, 6, 0, 0)
+        dg.setHorizontalSpacing(12)
+        dg.setVerticalSpacing(6)
+        self.specialty = QComboBox()
+        self.specialty.setEditable(True)
+        self.specialty.addItems(SPECIALTIES)
+        self.office = QLineEdit()
+        self.office.setPlaceholderText("204")
+        self.schedule = QLineEdit()
+        self.schedule.setPlaceholderText("Пн-Пт 8:00-14:00")
+        self.doc_phone = QLineEdit()
+        self.doc_phone.setPlaceholderText("+7XXXXXXXXXX")
+        self.photo_preview = w.Avatar("", 64, shape="rounded")
+        photo_btn = w.ghost_button("Выбрать фото")
+        photo_btn.clicked.connect(self._pick_photo)
+        dg.addWidget(w.label("Специальность", 9, color=pl["muted"]), 0, 0)
+        dg.addWidget(w.label("Кабинет", 9, color=pl["muted"]), 0, 1)
+        dg.addWidget(self.specialty, 1, 0)
+        dg.addWidget(self.office, 1, 1)
+        dg.addWidget(w.label("График приёма", 9, color=pl["muted"]), 2, 0)
+        dg.addWidget(w.label("Телефон", 9, color=pl["muted"]), 2, 1)
+        dg.addWidget(self.schedule, 3, 0)
+        dg.addWidget(self.doc_phone, 3, 1)
+        photo_row = QHBoxLayout()
+        photo_row.addWidget(self.photo_preview)
+        photo_row.addWidget(photo_btn)
+        photo_row.addStretch()
+        dg.addLayout(photo_row, 4, 0, 1, 2)
+        lay.addWidget(self.doctor_box)
+
+        # --- поля пациента ---
+        self.patient_box = QWidget()
+        pg = QGridLayout(self.patient_box)
+        pg.setContentsMargins(0, 6, 0, 0)
+        pg.setHorizontalSpacing(12)
+        pg.setVerticalSpacing(6)
+        self.birth = QDateEdit(QDate(1990, 1, 1))
+        self.birth.setCalendarPopup(True)
+        self.birth.setDisplayFormat("dd.MM.yyyy")
+        self.gender = QComboBox()
+        self.gender.addItems(["мужской", "женский"])
+        self.policy = QLineEdit()
+        self.policy.setPlaceholderText("16 цифр")
+        self.pat_phone = QLineEdit()
+        self.pat_phone.setPlaceholderText("+7XXXXXXXXXX")
+        self.doctor = QComboBox()
+        self.doctor.addItem("— не назначен —", None)
+        for d in db.get_all_doctors():
+            self.doctor.addItem(d[1], d[0])
+        pg.addWidget(w.label("Дата рождения", 9, color=pl["muted"]), 0, 0)
+        pg.addWidget(w.label("Пол", 9, color=pl["muted"]), 0, 1)
+        pg.addWidget(self.birth, 1, 0)
+        pg.addWidget(self.gender, 1, 1)
+        pg.addWidget(w.label("Полис ОМС", 9, color=pl["muted"]), 2, 0)
+        pg.addWidget(w.label("Телефон", 9, color=pl["muted"]), 2, 1)
+        pg.addWidget(self.policy, 3, 0)
+        pg.addWidget(self.pat_phone, 3, 1)
+        pg.addWidget(w.label("Лечащий врач", 9, color=pl["muted"]), 4, 0, 1, 2)
+        pg.addWidget(self.doctor, 5, 0, 1, 2)
+        lay.addWidget(self.patient_box)
+
+        buttons = QHBoxLayout()
+        buttons.addStretch()
+        cancel = w.ghost_button("Отмена")
+        cancel.clicked.connect(self.reject)
+        create = w.primary_button("Создать")
+        create.clicked.connect(self._create)
+        buttons.addWidget(cancel)
+        buttons.addWidget(create)
+        lay.addSpacing(6)
+        lay.addLayout(buttons)
+
+        self.full_name.textChanged.connect(self._suggest_login)
+        self.login.textEdited.connect(lambda _: setattr(self, "_login_edited", True))
+        self.role.changed.connect(self._on_role)
+        self.role.set_value(role)
+
+    def _on_role(self, role):
+        self.doctor_box.setVisible(role == "doctor")
+        self.patient_box.setVisible(role == "patient")
+        self.adjustSize()
+
+    def _suggest_login(self, text):
+        # Пока админ сам не правил логин — подставляем его из ФИО
+        if not self._login_edited and text.strip():
+            self.login.setText(db.find_free_login(db.generate_login(text)))
+        self.photo_preview.full_name = text
+        self.photo_preview.update()
+
+    def _pick_photo(self):
+        path, _ = QFileDialog.getOpenFileName(
+            self, "Фото врача", "", "Изображения (*.png *.jpg *.jpeg *.bmp *.webp)"
+        )
+        if path:
+            self._photo_src = path
+            self.photo_preview.set_photo(path)
+
+    def _create(self):
+        role = self.role.value()
+        full_name = self.full_name.text().strip()
+        login = self.login.text().strip()
+        password = self.password.text().strip()
+
+        for (ok, err), field, title in (
+            (validate_name(full_name), self.full_name, "Ошибка в ФИО"),
+            (validate_login(login), self.login, "Ошибка в логине"),
+            (validate_password(password), self.password, "Ошибка в пароле"),
+        ):
+            if not ok:
+                mb.warning(self, title, err)
+                field.setFocus()
+                return
+
+        if role == "doctor":
+            ok, err = validate_phone(self.doc_phone.text())
+            if not ok:
+                mb.warning(self, "Ошибка в телефоне", err)
+                return
+        if role == "patient":
+            birth = self.birth.date().toString("yyyy-MM-dd")
+            for ok, err in (
+                validate_birth_date(birth),
+                validate_policy(self.policy.text()),
+                validate_phone(self.pat_phone.text()),
+            ):
+                if not ok:
+                    mb.warning(self, "Ошибка в анкете", err)
+                    return
+
+        id_user = db.create_user(login, password, role, full_name)
+        if id_user is None:
+            mb.warning(self, "Логин занят", f"Логин «{login}» уже используется.")
+            self.login.setFocus()
+            self.login.selectAll()
+            return
+
+        if role == "doctor":
+            db.create_doctor(id_user, self.specialty.currentText().strip() or "Терапевт")
+            doctor = db.get_doctor_by_user(id_user)
+            if doctor:
+                photo = common.save_doctor_photo(doctor[0], self._photo_src) if self._photo_src else None
+                db.update_doctor_profile(
+                    doctor[0],
+                    self.specialty.currentText().strip() or "Терапевт",
+                    self.office.text().strip() or None,
+                    self.schedule.text().strip() or None,
+                    self.doc_phone.text().strip() or None,
+                    None,
+                    photo,
+                )
+        elif role == "patient":
+            db.create_patient(
+                id_user,
+                full_name,
+                self.birth.date().toString("yyyy-MM-dd"),
+                self.gender.currentText(),
+                self.policy.text().strip(),
+                self.pat_phone.text().strip(),
+                self.doctor.currentData(),
+            )
+
+        self.result_data = {"id_user": id_user, "login": login, "password": password, "role": role}
+        self.accept()
+
+
+# ============== ОКНО ==============
 class AdminAnalyticsWindow(QMainWindow):
-    def __init__(self, user_name: str = "", login_window=None):
+    def __init__(self, user_name: str = "", login_window=None, id_user=None):
         super().__init__()
         self.login_window = login_window
-        self.ui = Ui_AdminAnalyticsWindow()
-        self.ui.setupUi(self)
+        self.user_name = user_name
+        self.id_user = id_user
+        pl = w.pal()
 
-        for frame in (
-            self.ui.barChartFrame,
-            self.ui.pieChartFrame,
-            self.ui.lineChartFrame,
-        ):
-            shadow = QGraphicsDropShadowEffect(self)
-            shadow.setBlurRadius(24)
-            shadow.setColor(QColor(47, 92, 143, 40))
-            shadow.setOffset(0, 6)
-            frame.setGraphicsEffect(shadow)
+        self.setWindowTitle("Дневник терапии — CRM клиники")
+        self.resize(1400, 900)
+        self.setMinimumSize(1100, 720)
+
+        central = QWidget()
+        central.setObjectName("crmRoot")
+        central.setStyleSheet(f"QWidget#crmRoot {{ background: {pl['bg']}; }}" + w.input_qss())
+        self.setCentralWidget(central)
+
+        root = QVBoxLayout(central)
+        root.setContentsMargins(26, 18, 26, 12)
+        root.setSpacing(14)
+        root.addLayout(self._build_header())
+
+        self.kpi_row = QHBoxLayout()
+        self.kpi_row.setSpacing(8)
+        root.addLayout(self.kpi_row)
+
+        self.tabs = w.FolderTabs()
+        self.tabs.add_tab(self._build_analytics(), "Аналитика", "chart", TAB_COLORS[0])
+        self.tabs.add_tab(self._build_patients(), "Пациенты", "users", TAB_COLORS[1])
+        self.tabs.add_tab(self._build_doctors(), "Врачи", "stethoscope", TAB_COLORS[2])
+        self.tabs.add_tab(self._build_accounts(), "Учётные записи", "lock", TAB_COLORS[3])
+        self.tabs.add_tab(self._build_journal(), "Журнал", "clock", TAB_COLORS[4])
+        self.tabs.currentChanged.connect(self._on_tab)
+        root.addWidget(self.tabs, 1)
+
+        self.statusLabel = w.label("", 8)
+        root.addWidget(self.statusLabel)
+
+        self.panel = w.SidePanel(central)
+
+        QShortcut(QKeySequence("Ctrl+Q"), self, self.on_logout)
+        QShortcut(QKeySequence("Ctrl+F"), self, self._focus_search)
+        QShortcut(QKeySequence("Ctrl+N"), self, lambda: self.on_create_user())
+        for i in range(5):
+            QShortcut(QKeySequence(f"Ctrl+{i + 1}"), self, lambda i=i: self.tabs.set_current(i))
+
+        self._update_status_bar()
+        self.refresh_all()
+
+    # ---------- шапка ----------
+    def _build_header(self):
+        pl = w.pal()
+        row = QHBoxLayout()
+        row.setSpacing(14)
+        logo = QLabel("ДТ")
+        logo.setFixedSize(44, 44)
+        logo.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        logo.setFont(QFont(w.FONT, 13, QFont.Weight.Bold))
+        logo.setStyleSheet(
+            "color: white; border-radius: 13px;"
+            "background: qlineargradient(x1:0,y1:0,x2:1,y2:1, stop:0 #2F5C8F, stop:1 #163257);"
+        )
+        row.addWidget(logo)
+        titles = QVBoxLayout()
+        titles.setSpacing(0)
+        titles.addWidget(w.label("Дневник терапии", 15, bold=True))
+        titles.addWidget(w.label("CRM клиники · панель администратора", 9, color=pl["muted"]))
+        row.addLayout(titles)
+        row.addStretch()
+
+        add_btn = w.primary_button("+  Новая учётная запись")
+        add_btn.setToolTip("Ctrl+N")
+        add_btn.clicked.connect(lambda: self.on_create_user())
+        row.addWidget(add_btn)
+
+        me = QFrame()
+        me.setObjectName("meChip")
+        me.setStyleSheet(
+            f"QFrame#meChip {{ background: {pl['card']}; border: 1px solid {pl['line']};"
+            f" border-radius: 24px; }}"
+        )
+        me_lay = QHBoxLayout(me)
+        me_lay.setContentsMargins(6, 4, 14, 4)
+        me_lay.addWidget(w.Avatar(self.user_name or "Админ", 36, ring=w.ROLE_COLORS["admin"]))
+        me_col = QVBoxLayout()
+        me_col.setSpacing(0)
+        me_col.addWidget(w.label(w.short_name(self.user_name) or "Администратор", 9, bold=True))
+        me_col.addWidget(w.label("администратор", 8, color=pl["muted"]))
+        me_lay.addLayout(me_col)
+        row.addWidget(me)
+
+        self.logoutBtn = w.ghost_button("Выйти")
+        self.logoutBtn.setToolTip("Ctrl+Q")
+        self.logoutBtn.clicked.connect(self.on_logout)
+        row.addWidget(self.logoutBtn)
+        return row
+
+    # ---------- вкладка «Аналитика» ----------
+    def _build_analytics(self):
+        page = QWidget()
+        lay = QVBoxLayout(page)
+        lay.setContentsMargins(0, 0, 0, 0)
+        lay.setSpacing(8)
 
         self.barChartView = BarChartWidget()
         self.pieChartView = PieChartWidget()
         self.lineChartView = LineChartWidget()
 
-        self.ui.barChartLayout.addWidget(self.barChartView)
-        self.ui.pieChartLayout.addWidget(self.pieChartView)
-        self.ui.lineChartLayout.addWidget(self.lineChartView)
+        grid = QGridLayout()
+        grid.setSpacing(4)
+        cards = []
+        for chart, r, c, cs in (
+            (self.barChartView, 0, 0, 1),
+            (self.pieChartView, 0, 1, 1),
+            (self.lineChartView, 1, 0, 2),
+        ):
+            card = w.AnimatedCard(clickable=False)
+            card.body_layout.setContentsMargins(12, 10, 12, 16)
+            card.body_layout.addWidget(chart)
+            grid.addWidget(card, r, c, 1, cs)
+            cards.append(card)
+        self._chart_cards = cards
+        lay.addLayout(grid, 1)
 
-        self.ui.exportPdfButton.clicked.connect(self.on_export_pdf)
-        self.ui.logoutBtn.clicked.connect(self.on_logout)
+        export = QHBoxLayout()
+        export.setSpacing(16)
+        export.addWidget(w.label("В отчёт:", 10, bold=True))
+        self.barChartCheckBox = QCheckBox("Пациенты по врачам")
+        self.pieChartCheckBox = QCheckBox("Приверженность лечению")
+        self.lineChartCheckBox = QCheckBox("Активность в дневнике")
+        for cb in (self.barChartCheckBox, self.pieChartCheckBox, self.lineChartCheckBox):
+            cb.setChecked(True)
+            cb.setCursor(Qt.CursorShape.PointingHandCursor)
+            export.addWidget(cb)
+        export.addStretch()
+        self.exportPdfButton = w.primary_button("Скачать PDF-отчёт")
+        self.exportPdfButton.clicked.connect(self.on_export_pdf)
+        export.addWidget(self.exportPdfButton)
+        lay.addLayout(export)
+        return page
 
-        self.ui.usersTable.setColumnCount(4)
-        self.ui.usersTable.setHorizontalHeaderLabels(["ID", "Логин", "Роль", "ФИО"])
-        self.ui.usersTable.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
-        self.ui.usersTable.setEditTriggers(self.ui.usersTable.EditTrigger.NoEditTriggers)
-        self.ui.usersTable.setSelectionBehavior(self.ui.usersTable.SelectionBehavior.SelectRows)
+    # ---------- вкладка «Пациенты» ----------
+    def _build_patients(self):
+        page = QWidget()
+        lay = QVBoxLayout(page)
+        lay.setContentsMargins(0, 0, 0, 0)
+        lay.setSpacing(12)
+        bar = QHBoxLayout()
+        bar.setSpacing(10)
+        self.patient_search = w.search_line("Поиск по ФИО, логину, полису, телефону")
+        self.patient_search.textChanged.connect(self._render_patients)
+        self.patient_filter = w.SegmentedFilter(
+            [("all", "Все"), ("attention", "Требуют внимания"), ("no_doctor", "Без врача")]
+        )
+        self.patient_filter.changed.connect(self._render_patients)
+        self.patient_doctor = QComboBox()
+        self.patient_doctor.setMinimumWidth(220)
+        self.patient_doctor.currentIndexChanged.connect(self._render_patients)
+        add = w.ghost_button("+ Пациент")
+        add.clicked.connect(lambda: self.on_create_user("patient"))
+        bar.addWidget(self.patient_search, 1)
+        bar.addWidget(self.patient_filter)
+        bar.addWidget(self.patient_doctor)
+        bar.addWidget(add)
+        lay.addLayout(bar)
+        self.patients_count = w.label("", 9, color=w.pal()["muted"])
+        lay.addWidget(self.patients_count)
+        self.patients_grid = w.CardGrid("Пациенты не найдены")
+        lay.addWidget(self.patients_grid, 1)
+        return page
 
-        self.ui.generateBtn.clicked.connect(self.on_generate)
-        self.ui.addBtn.clicked.connect(self.on_add)
-        self.ui.deleteBtn.clicked.connect(self.on_delete)
-        self.ui.resetPasswordBtn.clicked.connect(self.on_reset_password)
+    # ---------- вкладка «Врачи» ----------
+    def _build_doctors(self):
+        page = QWidget()
+        lay = QVBoxLayout(page)
+        lay.setContentsMargins(0, 0, 0, 0)
+        lay.setSpacing(12)
+        bar = QHBoxLayout()
+        bar.setSpacing(10)
+        self.doctor_search = w.search_line("Поиск по ФИО, специальности, кабинету")
+        self.doctor_search.textChanged.connect(self._render_doctors)
+        self.doctor_spec = QComboBox()
+        self.doctor_spec.setMinimumWidth(200)
+        self.doctor_spec.currentIndexChanged.connect(self._render_doctors)
+        add = w.ghost_button("+ Врач")
+        add.clicked.connect(lambda: self.on_create_user("doctor"))
+        bar.addWidget(self.doctor_search, 1)
+        bar.addWidget(self.doctor_spec)
+        bar.addWidget(add)
+        lay.addLayout(bar)
+        self.doctors_grid = w.CardGrid("Врачи не найдены")
+        lay.addWidget(self.doctors_grid, 1)
+        return page
 
-        self.ui.assignTable.setColumnCount(3)
-        self.ui.assignTable.setHorizontalHeaderLabels(["ID", "Пациент", "Текущий врач"])
-        self.ui.assignTable.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
-        self.ui.assignTable.setEditTriggers(self.ui.assignTable.EditTrigger.NoEditTriggers)
-        self.ui.assignTable.setSelectionBehavior(self.ui.assignTable.SelectionBehavior.SelectRows)
+    # ---------- вкладка «Учётные записи» ----------
+    def _build_accounts(self):
+        page = QWidget()
+        lay = QVBoxLayout(page)
+        lay.setContentsMargins(0, 0, 0, 0)
+        lay.setSpacing(12)
+        bar = QHBoxLayout()
+        bar.setSpacing(10)
+        self.user_search = w.search_line("Поиск по ФИО или логину")
+        self.user_search.textChanged.connect(self._render_accounts)
+        self.user_role = w.SegmentedFilter(
+            [("all", "Все"), ("admin", "Администраторы"), ("doctor", "Врачи"), ("patient", "Пациенты")]
+        )
+        self.user_role.changed.connect(self._render_accounts)
+        bar.addWidget(self.user_search, 1)
+        bar.addWidget(self.user_role)
+        lay.addLayout(bar)
+        self.users_grid = w.CardGrid("Учётные записи не найдены")
+        lay.addWidget(self.users_grid, 1)
+        return page
 
-        self.ui.assignBtn.clicked.connect(self.on_assign_patient)
+    # ---------- вкладка «Журнал» ----------
+    def _build_journal(self):
+        page = QWidget()
+        lay = QVBoxLayout(page)
+        lay.setContentsMargins(0, 0, 0, 0)
+        lay.setSpacing(8)
+        lay.addWidget(w.label("Последние действия в системе", 11, bold=True))
+        self.journal_inner = QWidget()
+        self.journal_inner.setStyleSheet("background: transparent;")
+        self.journal_layout = QVBoxLayout(self.journal_inner)
+        self.journal_layout.setContentsMargins(0, 0, 6, 0)
+        self.journal_layout.setSpacing(0)
+        lay.addWidget(w.make_scroll(self.journal_inner), 1)
+        return page
 
-        self.load_users()
-        self.load_assignments()
+    # ---------- загрузка данных ----------
+    def refresh_all(self):
+        self.patients = db.get_patients_crm()
+        self.doctors = db.get_doctors_crm()
+        self.users = db.get_users_crm()
 
-        self.ui.exportPdfButton.setToolTip("Сформировать PDF-отчёт")
-        self.ui.generateBtn.setToolTip("Сгенерировать логин и пароль")
-        self.ui.resetPasswordBtn.setToolTip("Сменить пароль пользователю")
-        self.ui.deleteBtn.setToolTip("Удалить пользователя")
-        self.ui.assignBtn.setToolTip("Прикрепить пациента к врачу")
+        self._fill_combo(
+            self.patient_doctor,
+            [("Все врачи", None)] + [(d["full_name"], d["id_doctor"]) for d in self.doctors],
+        )
+        specs = sorted({d["specialty"] for d in self.doctors if d["specialty"]})
+        self._fill_combo(self.doctor_spec, [("Все специальности", None)] + [(s, s) for s in specs])
 
-        self._update_status_bar()
-        theme.apply_to_window(self, theme.is_dark())
+        self._render_kpi()
+        for chart in (self.barChartView, self.pieChartView, self.lineChartView):
+            chart.reload()
+        self._render_patients()
+        self._render_doctors()
+        self._render_accounts()
+        self._render_journal()
+
+    @staticmethod
+    def _fill_combo(combo, items):
+        current = combo.currentData()
+        combo.blockSignals(True)
+        combo.clear()
+        for text, data in items:
+            combo.addItem(text, data)
+        idx = combo.findData(current)
+        combo.setCurrentIndex(idx if idx >= 0 else 0)
+        combo.blockSignals(False)
+
+    def _render_kpi(self):
+        while self.kpi_row.count():
+            item = self.kpi_row.takeAt(0)
+            if item.widget():
+                item.widget().deleteLater()
+        c = db.get_crm_counters()
+        tiles = [
+            w.KpiTile("users", "пациентов", c.get("patients", 0), "#2F5C8F",
+                      f"{c['no_doctor']} без врача" if c.get("no_doctor") else ""),
+            w.KpiTile("stethoscope", "врачей", c.get("doctors", 0), "#2F5C8F"),
+            w.KpiTile("pill", "активных назначений", c.get("active_prescriptions", 0), "#2F5C8F"),
+            w.KpiTile("book", "записей в дневниках за 7 дней", c.get("diary_week", 0), "#2F5C8F"),
+        ]
+        for i, t in enumerate(tiles):
+            self.kpi_row.addWidget(t)
+            t.appear(i * 70)
+
+    def _render_patients(self, *_):
+        text = self.patient_search.text().strip().lower()
+        mode = self.patient_filter.value()
+        id_doctor = self.patient_doctor.currentData()
+        result = []
+        for p in self.patients:
+            hay = " ".join(str(p[k] or "") for k in ("full_name", "login", "policy_number", "phone")).lower()
+            if text and text not in hay:
+                continue
+            if id_doctor and p["id_doctor"] != id_doctor:
+                continue
+            if mode == "no_doctor" and p["id_doctor"]:
+                continue
+            if mode == "attention" and w.mood_of(p["last_wellbeing"])[0] not in ("Плохо", "Очень плохо"):
+                continue
+            result.append(p)
+        cards = []
+        for p in result:
+            card = PatientCard(p)
+            card.clicked.connect(lambda p=p: self.open_patient(p["id_patient"]))
+            cards.append(card)
+        self.patients_grid.set_cards(cards)
+        self.patients_count.setText(f"Показано {len(result)} из {len(self.patients)}")
+
+    def _render_doctors(self, *_):
+        text = self.doctor_search.text().strip().lower()
+        spec = self.doctor_spec.currentData()
+        cards = []
+        for d in self.doctors:
+            hay = " ".join(str(d[k] or "") for k in ("full_name", "specialty", "office", "login")).lower()
+            if text and text not in hay:
+                continue
+            if spec and d["specialty"] != spec:
+                continue
+            card = DoctorCard(d)
+            card.clicked.connect(lambda d=d: self.open_doctor(d["id_doctor"]))
+            cards.append(card)
+        self.doctors_grid.set_cards(cards)
+
+    def _render_accounts(self, *_):
+        text = self.user_search.text().strip().lower()
+        role = self.user_role.value()
+        cards = []
+        for u in self.users:
+            if role != "all" and u["role"] != role:
+                continue
+            if text and text not in f"{u['full_name']} {u['login']}".lower():
+                continue
+            card = UserCard(u, is_me=u["id_user"] == self.id_user)
+            card.clicked.connect(lambda u=u: self.open_user(u["id_user"]))
+            cards.append(card)
+        self.users_grid.set_cards(cards)
+
+    def _render_journal(self):
+        while self.journal_layout.count():
+            item = self.journal_layout.takeAt(0)
+            if item.widget():
+                item.widget().deleteLater()
+        rows = db.get_audit_log(100)
+        if not rows:
+            self.journal_layout.addWidget(w.label("Журнал пуст", 10, color=w.pal()["muted"]))
+        for i, a in enumerate(rows):
+            row = JournalRow(a)
+            self.journal_layout.addWidget(row)
+            row.appear(min(i, 12) * 35)
+        self.journal_layout.addStretch()
+
+    def _on_tab(self, i):
+        self.panel.close_panel()
+
+    def _focus_search(self):
+        searches = {1: self.patient_search, 2: self.doctor_search, 3: self.user_search}
+        line = searches.get(self.tabs.bar.current())
+        if line:
+            line.setFocus()
+            line.selectAll()
+
+    def _log(self, action, entity_type=None, entity_id=None):
+        db.log_action(self.id_user, action, entity_type, entity_id)
+
+    # ---------- боковая панель: пациент ----------
+    def open_patient(self, id_patient):
+        p = next((x for x in db.get_patients_crm() if x["id_patient"] == id_patient), None)
+        if not p:
+            return
+        pl = w.pal()
+        self.panel.open_panel("Карточка пациента")
+        lay = self.panel.content_layout
+
+        head = QHBoxLayout()
+        head.setSpacing(14)
+        mood, mood_color = w.mood_of(p["last_wellbeing"])
+        head.addWidget(w.Avatar(p["full_name"], 72, ring=mood_color))
+        col = QVBoxLayout()
+        col.setSpacing(4)
+        col.addWidget(w.label(p["full_name"], 14, bold=True, wrap=True))
+        col.addWidget(w.label(f"@{p['login']}", 9, color=pl["muted"]))
+        col.addWidget(w.chip(f"Самочувствие: {mood}", mood_color))
+        head.addLayout(col, 1)
+        lay.addLayout(head)
+
+        # Анкета
+        lay.addWidget(w.section_title("Анкета"))
+        form = QGridLayout()
+        form.setHorizontalSpacing(10)
+        form.setVerticalSpacing(4)
+        b0 = p["birth_date"]
+        birth = QDateEdit(QDate(b0.year, b0.month, b0.day) if b0 else QDate(1990, 1, 1))
+        birth.setCalendarPopup(True)
+        birth.setDisplayFormat("dd.MM.yyyy")
+        gender = QComboBox()
+        gender.addItems(["мужской", "женский"])
+        if p["gender"]:
+            gender.setCurrentText(p["gender"])
+        policy = QLineEdit(p["policy_number"] or "")
+        phone = QLineEdit(p["phone"] or "")
+        for i, (cap, field) in enumerate(
+            (("Дата рождения", birth), ("Пол", gender), ("Полис ОМС", policy), ("Телефон", phone))
+        ):
+            form.addWidget(w.label(cap, 9, color=pl["muted"]), (i // 2) * 2, i % 2)
+            form.addWidget(field, (i // 2) * 2 + 1, i % 2)
+        lay.addLayout(form)
+        save = w.primary_button("Сохранить анкету")
+
+        def save_profile():
+            b = birth.date().toString("yyyy-MM-dd")
+            for ok, err in (validate_birth_date(b), validate_policy(policy.text()), validate_phone(phone.text())):
+                if not ok:
+                    mb.warning(self, "Ошибка в анкете", err)
+                    return
+            if db.update_patient_profile(id_patient, b, gender.currentText(), policy.text().strip(), phone.text().strip()):
+                self._log("update_patient", "patients", id_patient)
+                save.setText("✓ Сохранено")
+                QTimer.singleShot(1400, lambda: save.setText("Сохранить анкету"))
+                self.refresh_all()
+
+        save.clicked.connect(save_profile)
+        lay.addWidget(save)
+
+        # Лечащий врач
+        lay.addWidget(w.section_title("Лечащий врач"))
+        doc_row = QHBoxLayout()
+        doctor = QComboBox()
+        doctor.addItem("— не назначен —", None)
+        for d in self.doctors:
+            doctor.addItem(f"{d['full_name']} ({d['specialty'] or 'врач'})", d["id_doctor"])
+        doctor.setCurrentIndex(max(0, doctor.findData(p["id_doctor"])))
+        doctor.setSizeAdjustPolicy(QComboBox.SizeAdjustPolicy.AdjustToMinimumContentsLengthWithIcon)
+        doctor.setMinimumContentsLength(12)
+        assign = w.ghost_button("Прикрепить")
+
+        def do_assign():
+            if db.reassign_patient_doctor(id_patient, doctor.currentData()):
+                self._log("reassign_doctor", "patients", id_patient)
+                self.refresh_all()
+                self.open_patient(id_patient)
+
+        assign.clicked.connect(do_assign)
+        doc_row.addWidget(doctor, 1)
+        doc_row.addWidget(assign)
+        lay.addLayout(doc_row)
+
+        # Назначения с иконками препаратов
+        rx = db.get_prescriptions_full(id_patient)
+        lay.addWidget(w.section_title(f"Назначения · {len(rx)}"))
+        if not rx:
+            lay.addWidget(w.label("Назначений пока нет", 9, color=pl["muted"]))
+        for r in rx:
+            lay.addWidget(common.rx_row(r))
+
+        # Последние записи дневника
+        entries = db.get_diary_entries_for_patient(id_patient)[:5]
+        lay.addWidget(w.section_title("Последние записи дневника"))
+        if not entries:
+            lay.addWidget(w.label("Записей нет", 9, color=pl["muted"]))
+        for e in entries:
+            m, color = w.mood_of(e[3])
+            row = QHBoxLayout()
+            dot = QLabel()
+            dot.setFixedSize(10, 10)
+            dot.setStyleSheet(f"background: {color}; border-radius: 5px;")
+            row.addWidget(dot)
+            row.addWidget(w.label(e[1].strftime("%d.%m.%Y"), 9, bold=True))
+            row.addWidget(w.label(m, 9, color=color))
+            sym = e[4] if e[4] and e[4] != "нет" else ""
+            row.addWidget(w.label(sym, 9, color=pl["muted"]), 1)
+            lay.addLayout(row)
+
+        self._account_actions(lay, p["id_user"], p["login"], p["full_name"])
+        lay.addStretch()
+
+    # ---------- боковая панель: врач ----------
+    def open_doctor(self, id_doctor):
+        d = next((x for x in db.get_doctors_crm() if x["id_doctor"] == id_doctor), None)
+        if not d:
+            return
+        pl = w.pal()
+        self.panel.open_panel("Карточка врача")
+        lay = self.panel.content_layout
+
+        photo = w.Avatar(d["full_name"], 240, w.doctor_photo_path(d["photo"]), shape="rounded", height=260)
+        lay.addWidget(photo, 0, Qt.AlignmentFlag.AlignHCenter)
+        photo_row = QHBoxLayout()
+        upload = w.primary_button("Загрузить фото" if not d["photo"] else "Заменить фото")
+        photo_row.addWidget(upload)
+        if d["photo"]:
+            remove = w.danger_button("Убрать")
+            photo_row.addWidget(remove)
+
+            def do_remove():
+                if mb.confirm(self, "Фото врача", "Удалить фотографию врача?"):
+                    common.remove_doctor_photo(d["photo"])
+                    db.update_doctor_profile(
+                        id_doctor, d["specialty"], d["office"], d["schedule"], d["phone"], d["email"], None
+                    )
+                    self.refresh_all()
+                    self.open_doctor(id_doctor)
+
+            remove.clicked.connect(do_remove)
+
+        def do_upload():
+            path, _ = QFileDialog.getOpenFileName(
+                self, "Фото врача", "", "Изображения (*.png *.jpg *.jpeg *.bmp *.webp)"
+            )
+            if not path:
+                return
+            name = common.save_doctor_photo(id_doctor, path, d["photo"])
+            if not name or name == d["photo"]:
+                mb.warning(self, "Фото", "Не удалось открыть изображение.")
+                return
+            db.update_doctor_profile(
+                id_doctor, d["specialty"], d["office"], d["schedule"], d["phone"], d["email"], name
+            )
+            self._log("doctor_photo", "doctors", id_doctor)
+            self.refresh_all()
+            self.open_doctor(id_doctor)
+
+        upload.clicked.connect(do_upload)
+        lay.addLayout(photo_row)
+
+        lay.addWidget(w.label(d["full_name"], 14, bold=True, wrap=True))
+        lay.addWidget(w.label(f"@{d['login']}", 9, color=pl["muted"]))
+
+        lay.addWidget(w.section_title("Профиль"))
+        form = QGridLayout()
+        form.setHorizontalSpacing(10)
+        form.setVerticalSpacing(4)
+        specialty = QComboBox()
+        specialty.setEditable(True)
+        specialty.addItems(SPECIALTIES)
+        specialty.setCurrentText(d["specialty"] or "")
+        office = QLineEdit(d["office"] or "")
+        schedule = QLineEdit(d["schedule"] or "")
+        phone = QLineEdit(d["phone"] or "")
+        email = QLineEdit(d["email"] or "")
+        fields = (
+            ("Специальность", specialty), ("Кабинет", office), ("График приёма", schedule),
+            ("Телефон", phone), ("E-mail", email),
+        )
+        for i, (cap, field) in enumerate(fields):
+            form.addWidget(w.label(cap, 9, color=pl["muted"]), (i // 2) * 2, i % 2)
+            form.addWidget(field, (i // 2) * 2 + 1, i % 2)
+        lay.addLayout(form)
+        save = w.primary_button("Сохранить профиль")
+
+        def save_profile():
+            ok, err = validate_phone(phone.text())
+            if not ok:
+                mb.warning(self, "Ошибка в телефоне", err)
+                return
+            mail = email.text().strip()
+            if mail and not re.match(r"^[^@\s]+@[^@\s]+\.[^@\s]+$", mail):
+                mb.warning(self, "Ошибка в e-mail", "Введите адрес вида name@clinic.ru")
+                return
+            if db.update_doctor_profile(
+                id_doctor, specialty.currentText().strip(), office.text().strip(),
+                schedule.text().strip(), phone.text().strip(), mail, d["photo"],
+            ):
+                self._log("update_doctor", "doctors", id_doctor)
+                save.setText("✓ Сохранено")
+                QTimer.singleShot(1400, lambda: save.setText("Сохранить профиль"))
+                self.refresh_all()
+
+        save.clicked.connect(save_profile)
+        lay.addWidget(save)
+
+        mine = [p for p in self.patients if p["id_doctor"] == id_doctor]
+        lay.addWidget(w.section_title(f"Пациенты · {len(mine)}"))
+        if not mine:
+            lay.addWidget(w.label("Пациентов пока нет", 9, color=pl["muted"]))
+        for p in mine:
+            btn = QPushButton()
+            btn.setCursor(Qt.CursorShape.PointingHandCursor)
+            btn.setStyleSheet(
+                f"QPushButton {{ background: {pl['card']}; border: 1px solid {pl['line']}; border-radius: 12px; }}"
+                f"QPushButton:hover {{ border-color: {pl['accent']}; }}"
+            )
+            btn.setMinimumHeight(52)
+            bl = QHBoxLayout(btn)
+            bl.setContentsMargins(10, 6, 10, 6)
+            bl.addWidget(w.Avatar(p["full_name"], 36))
+            bl.addWidget(w.label(p["full_name"], 10, bold=True), 1)
+            m, color = w.mood_of(p["last_wellbeing"])
+            bl.addWidget(w.chip(m, color))
+            btn.clicked.connect(lambda _=False, i=p["id_patient"]: self.open_patient(i))
+            lay.addWidget(btn)
+
+        self._account_actions(lay, d["id_user"], d["login"], d["full_name"])
+        lay.addStretch()
+
+    # ---------- боковая панель: учётная запись ----------
+    def open_user(self, id_user):
+        u = next((x for x in self.users if x["id_user"] == id_user), None)
+        if not u:
+            return
+        if u["role"] == "patient":
+            p = db.get_patient_by_user(id_user)
+            if p:
+                self.open_patient(p[0])
+                return
+        if u["role"] == "doctor":
+            d = db.get_doctor_by_user(id_user)
+            if d:
+                self.open_doctor(d[0])
+                return
+        self.panel.open_panel("Учётная запись")
+        lay = self.panel.content_layout
+        color = w.ROLE_COLORS.get(u["role"], "#2F5C8F")
+        head = QHBoxLayout()
+        head.addWidget(w.Avatar(u["full_name"], 72, ring=color))
+        col = QVBoxLayout()
+        col.addWidget(w.label(u["full_name"], 14, bold=True, wrap=True))
+        col.addWidget(w.chip(w.ROLE_NAMES.get(u["role"], u["role"]), color))
+        head.addLayout(col, 1)
+        lay.addLayout(head)
+        lay.addWidget(w.info_block([
+            ("Логин", u["login"]),
+            ("Создана", u["created_at"].strftime("%d.%m.%Y %H:%M") if u["created_at"] else "—"),
+        ]))
+        self._account_actions(lay, id_user, u["login"], u["full_name"])
+        lay.addStretch()
+
+    def _account_actions(self, lay, id_user, login, full_name):
+        lay.addWidget(w.section_title("Учётная запись"))
+        row = QHBoxLayout()
+        reset = w.ghost_button("Сбросить пароль")
+        reset.clicked.connect(lambda: self.on_reset_password(id_user, login))
+        row.addWidget(reset)
+        if id_user != self.id_user:
+            delete = w.danger_button("Удалить")
+            delete.clicked.connect(lambda: self.on_delete(id_user, login, full_name))
+            row.addWidget(delete)
+        lay.addLayout(row)
+
+    # ---------- действия ----------
+    def on_create_user(self, role="patient"):
+        dlg = CreateUserDialog(self, role)
+        if dlg.exec() and dlg.result_data:
+            r = dlg.result_data
+            self._log("create_user", "users", r["id_user"])
+            self.refresh_all()
+            common.CredentialsDialog(self, r["login"], r["password"], "Учётная запись создана").exec()
+
+    def on_reset_password(self, id_user, login):
+        if not mb.confirm(self, "Сброс пароля", f"Сгенерировать новый пароль для «{login}»?"):
+            return
+        new_password = db.generate_password()
+        if db.reset_user_password(id_user, new_password):
+            self._log("reset_password", "users", id_user)
+            common.CredentialsDialog(self, login, new_password, "Пароль сброшен").exec()
+            self._render_journal()
+        else:
+            mb.critical(self, "Ошибка", "Не удалось сбросить пароль")
+
+    def on_delete(self, id_user, login, full_name):
+        if not mb.confirm(
+            self,
+            "Удаление",
+            f"Удалить «{full_name}» (@{login})?\n\nВместе с пациентом удаляются его дневник и назначения.",
+        ):
+            return
+        d = db.get_doctor_by_user(id_user)
+        photo = None
+        if d:
+            photo = next((x["photo"] for x in self.doctors if x["id_doctor"] == d[0]), None)
+        if db.delete_user(id_user):
+            common.remove_doctor_photo(photo)
+            self._log("delete_user", "users", id_user)
+            self.panel.close_panel()
+            self.refresh_all()
+        else:
+            mb.critical(self, "Ошибка", "Не удалось удалить пользователя")
 
     def _update_status_bar(self):
         ok, err = db.check_connection()
         if ok:
-            self.ui.statusLabel.setText("● Подключено к базе данных")
-            self.ui.statusLabel.setStyleSheet("color: #27AE60; padding: 4px 8px; font-size: 10px;")
+            self.statusLabel.setText("● Подключено к базе данных")
+            self.statusLabel.setStyleSheet("color: #27AE60; background: transparent;")
         else:
-            self.ui.statusLabel.setText(f"● Нет связи с БД: {err[:60]}")
-            self.ui.statusLabel.setStyleSheet("color: #C0392B; padding: 4px 8px; font-size: 10px;")
+            self.statusLabel.setText(f"● Нет связи с БД: {err[:60]}")
+            self.statusLabel.setStyleSheet("color: #C0392B; background: transparent;")
 
     def on_logout(self):
         if self.login_window:
             self.login_window.return_from_child()
         self.close()
 
-    def load_users(self):
-        users = db.get_all_users()
-        self.ui.usersTable.setRowCount(len(users))
-        for row, u in enumerate(users):
-            self.ui.usersTable.setItem(row, 0, QTableWidgetItem(str(u[0])))
-            self.ui.usersTable.setItem(row, 1, QTableWidgetItem(str(u[1])))
-            self.ui.usersTable.setItem(row, 2, QTableWidgetItem(str(u[2])))
-            self.ui.usersTable.setItem(row, 3, QTableWidgetItem(str(u[3])))
-
-    def on_generate(self):
-        full_name = self.ui.fullNameLine.text().strip()
-        if not full_name:
-            mb.warning(self, "Не заполнено ФИО", "Сначала введите ФИО пользователя.")
-            self.ui.fullNameLine.setFocus()
-            return
-        login = db.generate_login(full_name)
-        password = db.generate_password()
-        self.ui.loginLine.setText(login)
-        self.ui.passwordLine.setText(password)
-        self._show_credentials_dialog(login, password, title="Логин и пароль")
-
-    def on_add(self):
-        login = self.ui.loginLine.text().strip()
-        password = self.ui.passwordLine.text().strip()
-        full_name = self.ui.fullNameLine.text().strip()
-        role = self.ui.roleCombo.currentText()
-
-        # === ВАЛИДАЦИЯ ===
-        from validators import validate_login, validate_password, validate_name
-
-        ok, err = validate_login(login)
-        if not ok:
-            mb.warning(self, "Ошибка в логине", err)
-            self.ui.loginLine.setFocus()
-            return
-
-        ok, err = validate_password(password)
-        if not ok:
-            mb.warning(self, "Ошибка в пароле", err)
-            self.ui.passwordLine.setFocus()
-            return
-
-        ok, err = validate_name(full_name)
-        if not ok:
-            mb.warning(self, "Ошибка в ФИО", err)
-            self.ui.fullNameLine.setFocus()
-            return
-        # === КОНЕЦ ВАЛИДАЦИИ ===
-
-        # === СОЗДАНИЕ ПОЛЬЗОВАТЕЛЯ ===
-        id_user = db.create_user(login, password, role, full_name)
-        if id_user is None:
-            mb.warning(
-                self,
-                "Не удалось создать пользователя",
-                f"Логин «{login}» уже используется.\n\n"
-                f"Измените логин или удалите старого пользователя.",
-            )
-            self.ui.loginLine.setFocus()
-            self.ui.loginLine.selectAll()
-            return
-
-        if role == "doctor":
-            db.create_doctor(id_user, "Терапевт")
-        elif role == "patient":
-            db.create_patient(id_user, full_name, "2000-01-01", "", "", None)
-
-        mb.info(self, "Пользователь создан", f"«{login}» добавлен.\n\nПароль: {password}")
-
-        self.ui.loginLine.clear()
-        self.ui.passwordLine.clear()
-        self.ui.fullNameLine.clear()
-        self.load_users()
-        self.load_assignments()
-
-    def on_delete(self):
-        row = self.ui.usersTable.currentRow()
-        if row < 0:
-            mb.warning(self, "Не выбран пользователь", "Кликните по строке таблицы.")
-            return
-        id_user = int(self.ui.usersTable.item(row, 0).text())
-        login = self.ui.usersTable.item(row, 1).text()
-
-        reply = QMessageBox.question(
-            self,
-            "Подтверждение удаления",
-            f"Удалить пользователя «{login}»?",
-            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
-            QMessageBox.StandardButton.No,
-        )
-        if reply != QMessageBox.StandardButton.Yes:
-            return
-
-        db.delete_user(id_user)
-        mb.info(self, "Готово", f"Пользователь «{login}» удалён")
-        self.load_users()
-        self.load_assignments()
-
-    def on_reset_password(self):
-        row = self.ui.usersTable.currentRow()
-        if row < 0:
-            mb.warning(self, "Не выбран пользователь", "Кликните по строке таблицы.")
-            return
-        id_user = int(self.ui.usersTable.item(row, 0).text())
-        login = self.ui.usersTable.item(row, 1).text()
-
-        reply = QMessageBox.question(
-            self,
-            "Подтверждение сброса",
-            f"Сбросить пароль «{login}»?",
-            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
-            QMessageBox.StandardButton.No,
-        )
-        if reply != QMessageBox.StandardButton.Yes:
-            return
-
-        new_password = db.generate_password()
-        ok = db.reset_user_password(id_user, new_password)
-        if ok:
-            self._show_credentials_dialog(login, new_password, title="Пароль сброшен")
-        else:
-            mb.critical(self, "Ошибка", "Не удалось сбросить пароль")
-
-    def load_assignments(self):
-        patients = db.get_all_patients_with_doctors()
-        self.ui.assignPatientCombo.clear()
-        self.ui.assignTable.setRowCount(len(patients))
-        for row, p in enumerate(patients):
-            self.ui.assignTable.setItem(row, 0, QTableWidgetItem(str(p[0])))
-            self.ui.assignTable.setItem(row, 1, QTableWidgetItem(str(p[1])))
-            self.ui.assignTable.setItem(row, 2, QTableWidgetItem(str(p[2])))
-            self.ui.assignPatientCombo.addItem(p[1], p[0])
-
-        doctors = db.get_all_doctors()
-        self.ui.assignDoctorCombo.clear()
-        for d in doctors:
-            self.ui.assignDoctorCombo.addItem(f"{d[1]} ({d[2]})", d[0])
-
-    def on_assign_patient(self):
-        if self.ui.assignPatientCombo.count() == 0:
-            mb.warning(self, "Нет пациентов", "В системе нет пациентов.")
-            return
-        if self.ui.assignDoctorCombo.count() == 0:
-            mb.warning(self, "Нет врачей", "В системе нет врачей.")
-            return
-
-        id_patient = self.ui.assignPatientCombo.currentData()
-        id_doctor = self.ui.assignDoctorCombo.currentData()
-        patient_name = self.ui.assignPatientCombo.currentText()
-        doctor_name = self.ui.assignDoctorCombo.currentText()
-
-        ok = db.reassign_patient_doctor(id_patient, id_doctor)
-        if ok:
-            mb.info(self, "Готово", f"«{patient_name}» прикреплён к «{doctor_name}»")
-            self.load_assignments()
-        else:
-            mb.critical(self, "Ошибка", "Не удалось прикрепить")
-
-    def _show_credentials_dialog(self, login: str, password: str, title: str = "Логин и пароль"):
-        dlg = QDialog(self)
-        dlg.setWindowTitle(title)
-        dlg.setMinimumWidth(460)
-        dlg.setStyleSheet("""
-            QDialog { background-color: #FFFFFF; }
-            QLabel { color: #1A1A1A; font-family: "Times New Roman"; font-size: 13px; }
-            QLineEdit { background-color: #F5F5F5; color: #1A1A1A; border: 1px solid #CCCCCC; border-radius: 8px; padding: 10px 14px; font-family: "Times New Roman"; font-size: 14px; }
-        """)
-
-        layout = QVBoxLayout(dlg)
-        layout.setContentsMargins(24, 24, 24, 24)
-        layout.setSpacing(12)
-
-        info = QLabel("Скопируйте данные и передайте пользователю.")
-        info.setStyleSheet("color: #666666; font-size: 12px;")
-        info.setWordWrap(True)
-        layout.addWidget(info)
-
-        layout.addWidget(QLabel("Логин:"))
-        login_field = QLineEdit(login)
-        login_field.setReadOnly(True)
-        layout.addWidget(login_field)
-
-        layout.addWidget(QLabel("Пароль:"))
-        pass_field = QLineEdit(password)
-        pass_field.setReadOnly(True)
-        layout.addWidget(pass_field)
-
-        copy_all_btn = QPushButton("Скопировать всё")
-        copy_all_btn.setCursor(Qt.CursorShape.PointingHandCursor)
-        copy_all_btn.setStyleSheet("""
-            QPushButton { background-color: #2F5C8F; color: white; border: none;
-                border-radius: 8px; padding: 10px 16px; font-size: 13px; }
-            QPushButton:hover { background-color: #1E4470; }
-        """)
-
-        close_btn = QPushButton("Закрыть")
-        close_btn.setCursor(Qt.CursorShape.PointingHandCursor)
-        close_btn.setStyleSheet("""
-            QPushButton { background-color: #E0E0E0; color: #1A1A1A; border: none;
-                border-radius: 8px; padding: 10px 24px; font-size: 13px; }
-            QPushButton:hover { background-color: #D0D0D0; }
-        """)
-
-        def copy_all():
-            QApplication.clipboard().setText(f"Логин: {login}\nПароль: {password}")
-            copy_all_btn.setText("✓ Скопировано")
-            t = QTimer(dlg)
-            t.setSingleShot(True)
-            t.timeout.connect(lambda: copy_all_btn.setText("Скопировать всё"))
-            t.start(1500)
-
-        copy_all_btn.clicked.connect(copy_all)
-        close_btn.clicked.connect(dlg.accept)
-
-        layout.addWidget(copy_all_btn)
-        row = QHBoxLayout()
-        row.addStretch()
-        row.addWidget(close_btn)
-        layout.addLayout(row)
-
-        dlg.exec()
-
     def on_export_pdf(self):
         selected = []
-        if self.ui.barChartCheckBox.isChecked():
+        if self.barChartCheckBox.isChecked():
             selected.append(("Столбчатая — Пациенты по врачам", BarChartWidget))
-        if self.ui.pieChartCheckBox.isChecked():
+        if self.pieChartCheckBox.isChecked():
             selected.append(("Круговая — Приверженность лечению", PieChartWidget))
-        if self.ui.lineChartCheckBox.isChecked():
+        if self.lineChartCheckBox.isChecked():
             selected.append(("Линейная — Активность в дневнике", LineChartWidget))
 
         if not selected:
@@ -548,8 +1385,8 @@ class AdminAnalyticsWindow(QMainWindow):
                 chart_h = PAGE_H - chart_y - margin
 
                 temp = cls()
+                temp.print_mode = True
                 temp.resize(chart_w, chart_h)
-                temp.setStyleSheet("background-color: #FFFFFF;")
                 temp.show()
                 QApplication.processEvents()
 
@@ -562,6 +1399,8 @@ class AdminAnalyticsWindow(QMainWindow):
                 painter.drawPixmap(chart_x, chart_y, pixmap)
 
             painter.end()
+            self._log("export_pdf")
+            self._render_journal()
             mb.info(self, "Готово", f"Отчёт сохранён:\n{file_path}")
         except Exception as e:
             mb.critical(self, "Ошибка", f"Не удалось сохранить PDF:\n{e}")

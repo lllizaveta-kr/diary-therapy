@@ -28,6 +28,7 @@ CREATE TABLE IF NOT EXISTS doctors (
     schedule VARCHAR(200),
     phone VARCHAR(50),
     email VARCHAR(100),
+    photo VARCHAR(255),
     FOREIGN KEY (id_user) REFERENCES users(id_user) ON DELETE CASCADE
 );
 

@@ -96,11 +96,47 @@ def get_my_patients(id_doctor):
         conn.close()
 
 
+_TRANSLIT = {
+    "а": "a", "б": "b", "в": "v", "г": "g", "д": "d", "е": "e", "ё": "e",
+    "ж": "zh", "з": "z", "и": "i", "й": "y", "к": "k", "л": "l", "м": "m",
+    "н": "n", "о": "o", "п": "p", "р": "r", "с": "s", "т": "t", "у": "u",
+    "ф": "f", "х": "kh", "ц": "ts", "ч": "ch", "ш": "sh", "щ": "shch",
+    "ъ": "", "ы": "y", "ь": "", "э": "e", "ю": "yu", "я": "ya",
+}
+
+
+def transliterate(text):
+    return "".join(_TRANSLIT.get(c, c) for c in text.lower())
+
+
 def generate_login(full_name):
-    parts = full_name.lower().split()
-    base = "".join(parts[:2]) if len(parts) >= 2 else parts[0]
-    base = "".join(c for c in base if c.isalnum())
-    return base or "patient"
+    """Логин латиницей: фамилия + первая буква имени (kuznetsov_d).
+    validate_login пропускает только латиницу, поэтому кириллицу транслитерируем."""
+    parts = [transliterate(p) for p in full_name.split()]
+    parts = ["".join(c for c in p if c.isascii() and c.isalnum()) for p in parts]
+    parts = [p for p in parts if p]
+    if not parts:
+        return "user"
+    base = parts[0] if len(parts) == 1 else f"{parts[0]}_{parts[1][0]}"
+    return base[:40]
+
+
+def find_free_login(base):
+    """Возвращает base, а если он занят — base2, base3 и т.д."""
+    conn = get_connection()
+    if not conn:
+        return base
+    try:
+        cur = conn.cursor()
+        login, counter = base, 1
+        while True:
+            cur.execute("SELECT 1 FROM users WHERE login = %s", (login,))
+            if cur.fetchone() is None:
+                return login
+            counter += 1
+            login = f"{base}{counter}"
+    finally:
+        conn.close()
 
 
 def generate_password(length=8):
@@ -209,7 +245,9 @@ def create_prescription(id_patient, id_doctor, id_medication, dosage, freq, star
             (id_patient, id_doctor, id_medication, dosage, freq, start, end, comment),
         )
         conn.commit()
-        return True
+        # Возвращаем id нового назначения (раньше брали MAX(id) — это ломалось,
+        # если два врача создавали назначения одновременно)
+        return cur.lastrowid
     except mysql.connector.Error as err:
         print(f"Ошибка: {err}")
         return False
@@ -779,5 +817,402 @@ def get_last_prescription_id():
         cur.execute("SELECT MAX(id_prescription) FROM prescriptions")
         row = cur.fetchone()
         return row[0] if row else None
+    finally:
+        conn.close()
+
+
+# ============== CRM АДМИНИСТРАТОРА ==============
+def get_crm_counters():
+    """Числа для плашек на главной CRM."""
+    conn = get_connection()
+    if not conn:
+        return {}
+    try:
+        cur = conn.cursor()
+        queries = {
+            "patients": "SELECT COUNT(*) FROM patients",
+            "doctors": "SELECT COUNT(*) FROM doctors",
+            "active_prescriptions": "SELECT COUNT(*) FROM prescriptions WHERE statuss = 'active'",
+            "diary_week": "SELECT COUNT(*) FROM diary_entries "
+            "WHERE entry_date >= CURDATE() - INTERVAL 6 DAY",
+            "no_doctor": "SELECT COUNT(*) FROM patients WHERE id_doctor IS NULL",
+        }
+        result = {}
+        for key, sql in queries.items():
+            cur.execute(sql)
+            result[key] = int(cur.fetchone()[0])
+        return result
+    finally:
+        conn.close()
+
+
+def get_patients_crm():
+    """Пациенты со всем, что нужно для карточки в CRM."""
+    conn = get_connection()
+    if not conn:
+        return []
+    try:
+        cur = conn.cursor(dictionary=True)
+        cur.execute("""
+            SELECT p.id_patient, p.id_user, u.full_name, u.login,
+                   p.birth_date, p.gender, p.policy_number, p.phone,
+                   p.id_doctor, du.full_name AS doctor_name, d.specialty, d.photo AS doctor_photo,
+                   (SELECT COUNT(*) FROM prescriptions pr
+                     WHERE pr.id_patient = p.id_patient AND pr.statuss = 'active') AS active_rx,
+                   (SELECT COUNT(*) FROM diary_entries de
+                     WHERE de.id_patient = p.id_patient) AS diary_count,
+                   (SELECT de.well_being_text FROM diary_entries de
+                     WHERE de.id_patient = p.id_patient
+                     ORDER BY de.entry_date DESC, de.entry_time DESC LIMIT 1) AS last_wellbeing,
+                   (SELECT MAX(de.entry_date) FROM diary_entries de
+                     WHERE de.id_patient = p.id_patient) AS last_entry
+            FROM patients p
+            JOIN users u ON u.id_user = p.id_user
+            LEFT JOIN doctors d ON d.id_doctor = p.id_doctor
+            LEFT JOIN users du ON du.id_user = d.id_user
+            ORDER BY u.full_name
+        """)
+        return cur.fetchall()
+    finally:
+        conn.close()
+
+
+def get_doctors_crm():
+    """Врачи с профилем, фото и числом пациентов."""
+    conn = get_connection()
+    if not conn:
+        return []
+    try:
+        cur = conn.cursor(dictionary=True)
+        cur.execute("""
+            SELECT d.id_doctor, d.id_user, u.full_name, u.login,
+                   d.specialty, d.office, d.schedule, d.phone, d.email, d.photo,
+                   (SELECT COUNT(*) FROM patients p WHERE p.id_doctor = d.id_doctor) AS patients_count,
+                   (SELECT COUNT(*) FROM prescriptions pr
+                     WHERE pr.id_doctor = d.id_doctor AND pr.statuss = 'active') AS active_rx
+            FROM doctors d
+            JOIN users u ON u.id_user = d.id_user
+            ORDER BY u.full_name
+        """)
+        return cur.fetchall()
+    finally:
+        conn.close()
+
+
+def update_doctor_profile(id_doctor, specialty, office, schedule, phone, email, photo):
+    conn = get_connection()
+    if not conn:
+        return False
+    try:
+        cur = conn.cursor()
+        cur.execute(
+            """
+            UPDATE doctors
+            SET specialty = %s, office = %s, schedule = %s, phone = %s, email = %s, photo = %s
+            WHERE id_doctor = %s
+        """,
+            (specialty, office, schedule, phone, email, photo, id_doctor),
+        )
+        conn.commit()
+        return True
+    except mysql.connector.Error as err:
+        print(f"Ошибка: {err}")
+        return False
+    finally:
+        conn.close()
+
+
+def update_patient_profile(id_patient, birth_date, gender, policy, phone):
+    conn = get_connection()
+    if not conn:
+        return False
+    try:
+        cur = conn.cursor()
+        cur.execute(
+            """
+            UPDATE patients
+            SET birth_date = %s, gender = %s, policy_number = %s, phone = %s
+            WHERE id_patient = %s
+        """,
+            (birth_date, gender, policy, phone, id_patient),
+        )
+        conn.commit()
+        return True
+    except mysql.connector.Error as err:
+        print(f"Ошибка: {err}")
+        return False
+    finally:
+        conn.close()
+
+
+def get_users_crm():
+    """Учётные записи с ролью и датой создания."""
+    conn = get_connection()
+    if not conn:
+        return []
+    try:
+        cur = conn.cursor(dictionary=True)
+        cur.execute("""
+            SELECT u.id_user, u.login, r.name_role AS role, u.full_name, u.created_at,
+                   d.photo
+            FROM users u
+            JOIN roles r ON r.id_role = u.id_role
+            LEFT JOIN doctors d ON d.id_user = u.id_user
+            ORDER BY u.created_at DESC, u.id_user DESC
+        """)
+        return cur.fetchall()
+    finally:
+        conn.close()
+
+
+def log_action(id_user, action, entity_type=None, entity_id=None):
+    """Запись в журнал действий. Ошибка журнала не должна ломать основное действие."""
+    conn = get_connection()
+    if not conn:
+        return
+    try:
+        cur = conn.cursor()
+        cur.execute(
+            """
+            INSERT INTO audit_log (id_user, actionn, entity_type, entity_id, ip_address)
+            VALUES (%s, %s, %s, %s, '127.0.0.1')
+        """,
+            (id_user, action, entity_type, entity_id),
+        )
+        conn.commit()
+    except mysql.connector.Error as err:
+        print(f"Ошибка журнала: {err}")
+    finally:
+        conn.close()
+
+
+def get_audit_log(limit=100):
+    conn = get_connection()
+    if not conn:
+        return []
+    try:
+        cur = conn.cursor(dictionary=True)
+        cur.execute(
+            """
+            SELECT a.id_log, a.actionn AS action, a.entity_type, a.entity_id,
+                   a.timestampp AS ts, u.full_name, r.name_role AS role
+            FROM audit_log a
+            LEFT JOIN users u ON u.id_user = a.id_user
+            LEFT JOIN roles r ON r.id_role = u.id_role
+            ORDER BY a.timestampp DESC, a.id_log DESC
+            LIMIT %s
+        """,
+            (limit,),
+        )
+        return cur.fetchall()
+    finally:
+        conn.close()
+
+
+def get_prescriptions_full(id_patient):
+    """Назначения пациента с формой выпуска препарата и расписанием приёма."""
+    conn = get_connection()
+    if not conn:
+        return []
+    try:
+        cur = conn.cursor(dictionary=True)
+        cur.execute(
+            """
+            SELECT p.id_prescription, m.name_med, m.form, p.dosage, p.frequency,
+                   p.start_date, p.end_date, p.statuss AS status, p.commentt AS comment,
+                   du.full_name AS doctor_name, d.photo AS doctor_photo,
+                   (SELECT GROUP_CONCAT(TIME_FORMAT(ps.time_of_day, '%H:%i')
+                           ORDER BY ps.time_of_day SEPARATOR ', ')
+                      FROM prescription_schedules ps
+                     WHERE ps.id_prescription = p.id_prescription) AS times
+            FROM prescriptions p
+            JOIN medications m ON m.id_medication = p.id_medication
+            JOIN doctors d ON d.id_doctor = p.id_doctor
+            JOIN users du ON du.id_user = d.id_user
+            WHERE p.id_patient = %s
+            ORDER BY p.statuss = 'active' DESC, p.start_date DESC
+        """,
+            (id_patient,),
+        )
+        return cur.fetchall()
+    finally:
+        conn.close()
+
+
+# ============== КАБИНЕТ ВРАЧА ==============
+def get_doctor_crm(id_doctor):
+    """Профиль одного врача (те же поля, что в get_doctors_crm)."""
+    return next((d for d in get_doctors_crm() if d["id_doctor"] == id_doctor), None)
+
+
+def get_medications_full():
+    """Справочник препаратов с формой выпуска и частотой назначения."""
+    conn = get_connection()
+    if not conn:
+        return []
+    try:
+        cur = conn.cursor(dictionary=True)
+        cur.execute("""
+            SELECT m.id_medication, m.name_med, m.form, m.dosage, m.manufacturer, m.description,
+                   (SELECT COUNT(*) FROM prescriptions p WHERE p.id_medication = m.id_medication) AS used
+            FROM medications m
+            ORDER BY used DESC, m.name_med
+        """)
+        return cur.fetchall()
+    finally:
+        conn.close()
+
+
+def get_prescriptions_by_doctor(id_doctor):
+    """Все назначения врача с пациентом, формой препарата и временем приёма."""
+    conn = get_connection()
+    if not conn:
+        return []
+    try:
+        cur = conn.cursor(dictionary=True)
+        cur.execute(
+            """
+            SELECT p.id_prescription, p.id_patient, u.full_name AS patient_name,
+                   m.name_med, m.form, p.dosage, p.frequency,
+                   p.start_date, p.end_date, p.statuss AS status, p.commentt AS comment,
+                   (SELECT GROUP_CONCAT(TIME_FORMAT(ps.time_of_day, '%H:%i')
+                           ORDER BY ps.time_of_day SEPARATOR ', ')
+                      FROM prescription_schedules ps
+                     WHERE ps.id_prescription = p.id_prescription) AS times
+            FROM prescriptions p
+            JOIN medications m ON m.id_medication = p.id_medication
+            JOIN patients pa ON pa.id_patient = p.id_patient
+            JOIN users u ON u.id_user = pa.id_user
+            WHERE p.id_doctor = %s
+            ORDER BY p.statuss = 'active' DESC, p.start_date DESC
+        """,
+            (id_doctor,),
+        )
+        return cur.fetchall()
+    finally:
+        conn.close()
+
+
+def set_prescription_status(id_prescription, status):
+    conn = get_connection()
+    if not conn:
+        return False
+    try:
+        cur = conn.cursor()
+        cur.execute(
+            "UPDATE prescriptions SET statuss = %s WHERE id_prescription = %s",
+            (status, id_prescription),
+        )
+        conn.commit()
+        return True
+    except mysql.connector.Error as err:
+        print(f"Ошибка: {err}")
+        return False
+    finally:
+        conn.close()
+
+
+def get_diary_full(id_patient):
+    """Записи дневника вместе с показателями, диагнозом МКБ-10 и комментариями врача.
+    Делаем 3 запроса на всех вместо 3 запросов на каждую запись."""
+    conn = get_connection()
+    if not conn:
+        return []
+    try:
+        cur = conn.cursor(dictionary=True)
+        cur.execute(
+            """
+            SELECT de.id_diary, de.entry_date, de.entry_time, de.well_being_text, de.symptoms,
+                   de.doctor_diagnosis, de.id_disease, ds.code AS disease_code, ds.name AS disease_name,
+                   du.full_name AS viewed_by
+            FROM diary_entries de
+            LEFT JOIN diseases ds ON ds.id_disease = de.id_disease
+            LEFT JOIN doctors d ON d.id_doctor = de.id_doctor_who_viewed
+            LEFT JOIN users du ON du.id_user = d.id_user
+            WHERE de.id_patient = %s
+            ORDER BY de.entry_date DESC, de.entry_time DESC
+        """,
+            (id_patient,),
+        )
+        entries = cur.fetchall()
+        by_id = {e["id_diary"]: e for e in entries}
+        for e in entries:
+            e["indicators"] = []
+            e["comments"] = []
+        if not entries:
+            return []
+        cur.execute(
+            """
+            SELECT hi.id_diary, hi.indicator_type, hi.valuee AS value, hi.unit
+            FROM health_indicators hi
+            JOIN diary_entries de ON de.id_diary = hi.id_diary
+            WHERE de.id_patient = %s
+            ORDER BY hi.id_indicator
+        """,
+            (id_patient,),
+        )
+        for row in cur.fetchall():
+            by_id[row["id_diary"]]["indicators"].append(row)
+        cur.execute(
+            """
+            SELECT dc.id_diary, dc.commentt AS text, dc.created_at, u.full_name AS doctor_name
+            FROM doctor_comments dc
+            JOIN diary_entries de ON de.id_diary = dc.id_diary
+            JOIN doctors d ON d.id_doctor = dc.id_doctor
+            JOIN users u ON u.id_user = d.id_user
+            WHERE de.id_patient = %s
+            ORDER BY dc.created_at
+        """,
+            (id_patient,),
+        )
+        for row in cur.fetchall():
+            by_id[row["id_diary"]]["comments"].append(row)
+        return entries
+    finally:
+        conn.close()
+
+
+def add_doctor_comment(id_diary, id_doctor, text):
+    conn = get_connection()
+    if not conn:
+        return False
+    try:
+        cur = conn.cursor()
+        cur.execute(
+            "INSERT INTO doctor_comments (id_diary, id_doctor, commentt) VALUES (%s, %s, %s)",
+            (id_diary, id_doctor, text),
+        )
+        conn.commit()
+        return True
+    except mysql.connector.Error as err:
+        print(f"Ошибка: {err}")
+        return False
+    finally:
+        conn.close()
+
+
+# ============== КАБИНЕТ ПАЦИЕНТА ==============
+def get_today_schedule_full(id_patient):
+    """Приёмы лекарств на сегодня с формой препарата — для ленты «Сегодня»."""
+    conn = get_connection()
+    if not conn:
+        return []
+    try:
+        cur = conn.cursor(dictionary=True)
+        cur.execute(
+            """
+            SELECT ps.id_schedule, p.id_prescription, m.name_med, m.form, ps.dose,
+                   ps.time_of_day, ps.instructions, p.frequency
+            FROM prescription_schedules ps
+            JOIN prescriptions p ON p.id_prescription = ps.id_prescription
+            JOIN medications m ON m.id_medication = p.id_medication
+            WHERE p.id_patient = %s
+              AND p.statuss = 'active'
+              AND CURDATE() BETWEEN p.start_date AND p.end_date
+            ORDER BY ps.time_of_day
+        """,
+            (id_patient,),
+        )
+        return cur.fetchall()
     finally:
         conn.close()

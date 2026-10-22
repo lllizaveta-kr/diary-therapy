@@ -3,6 +3,7 @@ import random
 
 import mysql.connector
 from PySide6.QtCore import (
+    QSize,
     Qt,
     QTimer,
     QPropertyAnimation,
@@ -169,7 +170,7 @@ class LoginWindow(QMainWindow):
         theme.apply_to_window(self, theme.is_dark())
 
         self.theme_btn = QPushButton(self)
-        self.theme_btn.setText("☀️" if theme.is_dark() else "🌙")
+        self._update_theme_icon(theme.is_dark())
         self.theme_btn.setCursor(Qt.CursorShape.PointingHandCursor)
         self.theme_btn.setGeometry(852, 12, 36, 36)
         self.theme_btn.setStyleSheet("""
@@ -186,9 +187,17 @@ class LoginWindow(QMainWindow):
         self.theme_btn.clicked.connect(self.toggle_theme)
         self.theme_btn.raise_()
 
+    def _update_theme_icon(self, dark):
+        # Векторная иконка вместо смайлика: в тёмной теме — солнце, в светлой — луна
+        from windows.widgets import icon
+
+        self.theme_btn.setIcon(icon("sun" if dark else "moon", 20, "#FFFFFF"))
+        self.theme_btn.setIconSize(QSize(20, 20))
+        self.theme_btn.setToolTip("Светлая тема" if dark else "Тёмная тема")
+
     def toggle_theme(self):
         new_dark = theme.toggle(QApplication.instance())
-        self.theme_btn.setText("☀️" if new_dark else "🌙")
+        self._update_theme_icon(new_dark)
         for b in self.bubbles:
             b.update()
 
@@ -277,7 +286,7 @@ class LoginWindow(QMainWindow):
                     if role == "admin":
                         from windows.admin_window import AdminAnalyticsWindow
 
-                        self.child_window = AdminAnalyticsWindow(user["full_name"], self)
+                        self.child_window = AdminAnalyticsWindow(user["full_name"], self, id_user=user["id_user"])
                         self.child_window.show()
                         self.hide()
                     elif role == "doctor":

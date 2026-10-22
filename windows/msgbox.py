@@ -62,3 +62,17 @@ def critical(parent, title, text):
     box.setStandardButtons(QMessageBox.StandardButton.Ok)
     _style(box)
     return box.exec()
+
+
+def confirm(parent, title, text):
+    """Вопрос Да/Нет в общем стиле. Возвращает True, если нажали «Да»."""
+    box = QMessageBox(parent)
+    box.setIcon(QMessageBox.Icon.Question)
+    box.setWindowTitle(title)
+    box.setText(text)
+    box.setStandardButtons(QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No)
+    box.setDefaultButton(QMessageBox.StandardButton.No)
+    box.button(QMessageBox.StandardButton.Yes).setText("Да")
+    box.button(QMessageBox.StandardButton.No).setText("Нет")
+    _style(box)
+    return box.exec() == QMessageBox.StandardButton.Yes
