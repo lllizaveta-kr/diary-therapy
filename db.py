@@ -10,11 +10,10 @@ from config import DB_CONFIG
 
 def get_connection():
     try:
-        return mysql.connector.connect(**DB_CONFIG)
+        return mysql.connector.connect(**DB_CONFIG, connection_timeout=5)
     except mysql.connector.Error as err:
-        print(f"Ошибка подключения: {err}")
+        logging.error(f"Ошибка подключения к БД: {err}")
         return None
-
 
 def check_connection():
     try:
