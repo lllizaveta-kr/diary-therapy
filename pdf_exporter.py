@@ -73,7 +73,8 @@ def export_patients_to_pdf(filepath, patients, header_title="Список пац
     y = _draw_header(painter, header_title, f"Всего записей: {len(patients)}")
     page_num = 1
 
-    cols = [("ФИО", 900), ("Дата рожд.", 450), ("Телефон", 450), ("Лечащий врач", 500)]
+    # ИСПРАВЛЕНИЕ: Уменьшили ширину колонок, чтобы всё влезло в лист (сумма = 2180)
+    cols = [("ФИО", 750), ("Дата рожд.", 350), ("Телефон", 400), ("Лечащий врач", 680)]
 
     def draw_table_header(y_pos):
         x = MARGIN
@@ -108,8 +109,8 @@ def export_patients_to_pdf(filepath, patients, header_title="Список пац
 
         values = [fio, bdate, phone, doctor]
         for (col_name, width), val in zip(cols, values):
-            painter.drawText(QRectF(x, y, width, 50), Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter,
-                             str(val))
+            text = painter.fontMetrics().elidedText(str(val), Qt.TextElideMode.ElideRight, width - 10)
+            painter.drawText(QRectF(x, y, width, 50), Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter, text)
             x += width
 
         y += 50

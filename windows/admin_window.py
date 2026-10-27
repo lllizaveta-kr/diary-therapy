@@ -48,7 +48,6 @@ class ScheduleInput(QWidget):
         lay.setContentsMargins(0, 0, 0, 0)
         lay.setSpacing(4)
 
-        # Дни недели
         days_lay = QHBoxLayout()
         days_lay.setSpacing(4)
         self.day_checks = {}
@@ -60,7 +59,6 @@ class ScheduleInput(QWidget):
         days_lay.addStretch()
         lay.addLayout(days_lay)
 
-        # Время
         time_lay = QHBoxLayout()
         time_lay.setSpacing(8)
         self.time_start = QTimeEdit(QTime(8, 0))
@@ -118,19 +116,21 @@ class ChartWidget(QWidget):
         painter.setRenderHint(QPainter.RenderHint.Antialiasing)
         painter.fillRect(self.rect(), QColor(c["card"]))
         painter.setPen(QColor(c["text"]))
+
         font = QFont(w.FONT)
-        font.setPointSize(11)
+        font.setPointSize(28 if self.print_mode else 11)
         font.setBold(True)
         painter.setFont(font)
-        painter.drawText(QRectF(0, 4, self.width(), 26), Qt.AlignmentFlag.AlignCenter, self.title)
-        self.draw_content(painter, QRectF(0, 34, self.width(), self.height() - 34))
+        painter.drawText(QRectF(0, 4, self.width(), 60 if self.print_mode else 26),
+                         Qt.AlignmentFlag.AlignCenter, self.title)
+
+        offset = 80 if self.print_mode else 34
+        self.draw_content(painter, QRectF(0, offset, self.width(), self.height() - offset))
 
     def _no_data(self, painter, rect):
         painter.setPen(QColor(self._colors()["muted"]))
-        painter.setFont(QFont(w.FONT, 10))
+        painter.setFont(QFont(w.FONT, 16 if self.print_mode else 10))
         painter.drawText(rect, Qt.AlignmentFlag.AlignCenter, "Нет данных")
-
-    def draw_content(self, painter, rect): pass
 
 
 class BarChartWidget(ChartWidget):
@@ -145,12 +145,17 @@ class BarChartWidget(ChartWidget):
     def draw_content(self, painter, rect):
         if not self.data: self._no_data(painter, rect); return
         c = self._colors()
-        margin = 30
-        chart_rect = rect.adjusted(margin, 10, -10, -22)
+
+        left_margin = 60 if self.print_mode else 30
+        bottom_margin = 120 if self.print_mode else 22
+        chart_rect = rect.adjusted(left_margin, 10, -10, -bottom_margin)
+
         max_val = max(self.data) or 1
         gap = chart_rect.width() / len(self.data)
         bar_w = gap * 0.6
-        painter.setFont(QFont(w.FONT, 8))
+
+        painter.setFont(QFont(w.FONT, 20 if self.print_mode else 8))
+
         for i, val in enumerate(self.data):
             h = chart_rect.height() * val / max_val
             x = chart_rect.left() + i * gap + (gap - bar_w) / 2
@@ -159,9 +164,16 @@ class BarChartWidget(ChartWidget):
             painter.setPen(Qt.PenStyle.NoPen)
             painter.drawRoundedRect(QRectF(x, y, bar_w, h), 5, 5)
             painter.setPen(QColor(c["text"]))
-            painter.drawText(QRectF(x, y - 16, bar_w, 16), Qt.AlignmentFlag.AlignCenter, str(val))
-            painter.drawText(QRectF(x - gap * 0.2, chart_rect.bottom() + 2, bar_w + gap * 0.4, 16),
-                             Qt.AlignmentFlag.AlignCenter, w.short_name(str(self.labels[i])))
+
+            text_offset = 40 if self.print_mode else 16
+            painter.drawText(QRectF(x, y - text_offset, bar_w, text_offset),
+                             Qt.AlignmentFlag.AlignCenter, str(val))
+
+            bottom_offset = 40 if self.print_mode else 16
+            painter.drawText(
+                QRectF(x - gap * 0.4, chart_rect.bottom() + (10 if self.print_mode else 2), bar_w + gap * 0.8,
+                       bottom_offset),
+                Qt.AlignmentFlag.AlignCenter, w.short_name(str(self.labels[i])))
 
 
 class PieChartWidget(ChartWidget):
@@ -191,16 +203,23 @@ class PieChartWidget(ChartWidget):
             painter.setPen(QPen(QColor(c["card"]), 2))
             painter.drawPie(pie_rect, start_angle, -span)
             start_angle -= span
-        painter.setFont(QFont(w.FONT, 8))
-        lx = cx + size + 12
-        ly = cy + 10
+
+        painter.setFont(QFont(w.FONT, 20 if self.print_mode else 8))
+        lx = cx + size + (40 if self.print_mode else 12)
+        ly = cy + (30 if self.print_mode else 10)
+
         for i, (name, val) in enumerate(self.data):
             painter.setBrush(QBrush(self.COLORS[i % len(self.COLORS)]))
             painter.setPen(Qt.PenStyle.NoPen)
-            painter.drawRoundedRect(QRectF(lx, ly, 12, 12), 3, 3)
+            box_size = 24 if self.print_mode else 12
+            painter.drawRoundedRect(QRectF(lx, ly, box_size, box_size), 3, 3)
             painter.setPen(QColor(c["text"]))
-            painter.drawText(QRectF(lx + 18, ly, 160, 14), Qt.AlignmentFlag.AlignVCenter, f"{name} — {val}")
-            ly += 20
+
+            text_w = 300 if self.print_mode else 160
+            text_h = 30 if self.print_mode else 14
+            painter.drawText(QRectF(lx + box_size + 10, ly, text_w, text_h),
+                             Qt.AlignmentFlag.AlignVCenter, f"{name} — {val}")
+            ly += (50 if self.print_mode else 20)
 
 
 class LineChartWidget(ChartWidget):
@@ -215,8 +234,11 @@ class LineChartWidget(ChartWidget):
     def draw_content(self, painter, rect):
         if not self.data: self._no_data(painter, rect); return
         c = self._colors()
-        margin = 30
-        chart_rect = rect.adjusted(margin, 15, -28, -22)
+
+        left_margin = 60 if self.print_mode else 30
+        bottom_margin = 100 if self.print_mode else 22
+        chart_rect = rect.adjusted(left_margin, 15, -28, -bottom_margin)
+
         max_val = max(self.data) or 1
         step_x = chart_rect.width() / max(1, len(self.data) - 1)
         points = []
@@ -224,18 +246,30 @@ class LineChartWidget(ChartWidget):
             x = chart_rect.left() + i * step_x
             y = chart_rect.bottom() - chart_rect.height() * val / max_val
             points.append((x, y))
-        painter.setPen(QPen(QColor("#2F5C8F"), 2))
+
+        pen_width = 4 if self.print_mode else 2
+        painter.setPen(QPen(QColor("#2F5C8F"), pen_width))
         for i in range(len(points) - 1):
             painter.drawLine(int(points[i][0]), int(points[i][1]), int(points[i + 1][0]), int(points[i + 1][1]))
-        painter.setFont(QFont(w.FONT, 8))
+
+        painter.setFont(QFont(w.FONT, 20 if self.print_mode else 8))
+
         for i, (x, y) in enumerate(points):
+            point_r = 8 if self.print_mode else 4
             painter.setBrush(QBrush(QColor("#2F5C8F")))
             painter.setPen(QPen(QColor(c["card"]), 2))
-            painter.drawEllipse(QRectF(x - 4, y - 4, 8, 8))
+            painter.drawEllipse(QRectF(x - point_r, y - point_r, point_r * 2, point_r * 2))
+
             painter.setPen(QColor(c["text"]))
-            painter.drawText(QRectF(x - 20, y - 20, 40, 14), Qt.AlignmentFlag.AlignCenter, str(self.data[i]))
-            painter.drawText(QRectF(x - 40, chart_rect.bottom() + 2, 80, 14), Qt.AlignmentFlag.AlignCenter,
-                             str(self.labels[i]))
+            text_w = 120 if self.print_mode else 40
+            text_h = 40 if self.print_mode else 14
+
+            painter.drawText(QRectF(x - text_w / 2, y - (50 if self.print_mode else 20), text_w, text_h),
+                             Qt.AlignmentFlag.AlignCenter, str(self.data[i]))
+
+            painter.drawText(
+                QRectF(x - text_w / 2, chart_rect.bottom() + (10 if self.print_mode else 2), text_w, text_h),
+                Qt.AlignmentFlag.AlignCenter, str(self.labels[i]))
 
 
 # ============== КАРТОЧКИ ==============
@@ -1088,20 +1122,33 @@ class AdminAnalyticsWindow(QMainWindow):
         save = w.primary_button("Сохранить профиль")
 
         def save_profile():
+            save.setEnabled(False)
+            save.setText("Сохранение...")
+
             ok, err = validate_phone(phone.text())
-            if not ok: mb.warning(self, "Ошибка в телефоне", err); return
+            if not ok:
+                mb.warning(self, "Ошибка в телефоне", err)
+                save.setEnabled(True)
+                save.setText("Сохранить профиль")
+                return
+
             mail = email.text().strip()
-            if mail and not re.match(r"^[^@\s]+@[^@\s]+\.[^@\s]+$", mail): mb.warning(self, "Ошибка в e-mail",
-                                                                                      "Введите адрес вида name@clinic.ru"); return
+            if mail and not re.match(r"^[^@\s]+@[^@\s]+\.[^@\s]+$", mail):
+                mb.warning(self, "Ошибка в e-mail", "Введите адрес вида name@clinic.ru")
+                save.setEnabled(True)
+                save.setText("Сохранить профиль")
+                return
 
             new_sched = schedule.get_text()
 
             if db.update_doctor_profile(id_doctor, specialty.currentText().strip(), office.text().strip(), new_sched,
                                         phone.text().strip(), mail, d["photo"]):
                 self._log("update_doctor", "doctors", id_doctor)
+                self.refresh_all()
                 save.setText("✓ Сохранено")
                 QTimer.singleShot(1400, lambda: save.setText("Сохранить профиль"))
-                self.refresh_all()
+
+            save.setEnabled(True)
 
         save.clicked.connect(save_profile)
         lay.addWidget(save)
@@ -1213,6 +1260,8 @@ class AdminAnalyticsWindow(QMainWindow):
         if not path.endswith(".pdf"): path += ".pdf"
         try:
             pdf_exporter.export_patients_to_pdf(path, self.patients, "Список пациентов клиники")
+            self._log("export_pdf")
+            self._render_journal()
             mb.info(self, "Готово", "Список пациентов выгружен.")
         except Exception as e:
             mb.critical(self, "Ошибка", f"Не удалось: {e}")
@@ -1224,6 +1273,8 @@ class AdminAnalyticsWindow(QMainWindow):
         entries = db.get_diary_entries_for_patient(id_patient)
         try:
             pdf_exporter.export_diary_to_pdf(path, name, entries, db.get_indicators_for_diary)
+            self._log("export_pdf")
+            self._render_journal()
             mb.info(self, "Готово", "Дневник выгружен.")
         except Exception as e:
             mb.critical(self, "Ошибка", f"Не удалось: {e}")

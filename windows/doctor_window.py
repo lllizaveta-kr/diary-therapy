@@ -16,7 +16,6 @@ from windows.common import DiaryCard, MoodTrend, RxCard, human_date
 from windows import msgbox as mb
 from windows import widgets as w
 
-# Добавили 5-й цвет для новой вкладки
 TAB_COLORS = ["#1E4470", "#2F5C8F", "#5A7CA6", "#7A9CC6", "#8FA8C4"]
 FREQUENCIES = ["1 раз в день", "2 раза в день", "3 раза в день", "4 раза в день", "через день", "1 раз в неделю",
                "при боли", "при приступе"]
@@ -546,7 +545,7 @@ class DoctorWindow(QMainWindow):
         lay.addWidget(w.make_scroll(self.diary_inner), 1)
         return page
 
-    # --- НОВАЯ ВКЛАДКА: КАЛЬКУЛЯТОРЫ ---
+    # --- ВКЛАДКА: КАЛЬКУЛЯТОРЫ ---
     def _build_calculators(self):
         pl = w.pal()
         page = QWidget()
@@ -566,10 +565,18 @@ class DoctorWindow(QMainWindow):
         self.bmi_height = QLineEdit()
         self.bmi_height.setPlaceholderText("170")
 
+        # ДОБАВЛЕНО: Выбор пола
+        self.bmi_gender = QComboBox()
+        self.bmi_gender.addItems(["мужской", "женский"])
+
         bmi_grid.addWidget(w.label("Вес (кг)", 9, color=pl["muted"]), 0, 0)
         bmi_grid.addWidget(w.label("Рост (см)", 9, color=pl["muted"]), 0, 1)
+        bmi_grid.addWidget(w.label("Пол", 9, color=pl["muted"]), 0, 2)
+
         bmi_grid.addWidget(self.bmi_weight, 1, 0)
         bmi_grid.addWidget(self.bmi_height, 1, 1)
+        bmi_grid.addWidget(self.bmi_gender, 1, 2)
+
         bmi_card.body_layout.addLayout(bmi_grid)
 
         bmi_btn = w.primary_button("Рассчитать ИМТ")
@@ -631,10 +638,11 @@ class DoctorWindow(QMainWindow):
     def _calc_bmi(self):
         try:
             weight = float(self.bmi_weight.text().replace(",", "."))
-            height = float(self.bmi_height.text().replace(",", ".")) / 100
+            height = float(self.bmi_height.text().replace(",", "."))
             if height <= 0 or weight <= 0:
                 raise ValueError
-            bmi = weight / (height ** 2)
+            height_m = height / 100
+            bmi = weight / (height_m ** 2)
 
             if bmi < 18.5:
                 status = "Недостаточный вес"
@@ -645,7 +653,26 @@ class DoctorWindow(QMainWindow):
             else:
                 status = "Ожирение"
 
-            self.bmi_result.setText(f"ИМТ: {bmi:.1f}\n({status})")
+            # Идеальный вес по Броку (разный для М и Ж)
+            gender = self.bmi_gender.currentText()
+            if gender == "мужской":
+                ideal_weight = height - 100
+            else:
+                ideal_weight = height - 110
+
+            diff = weight - ideal_weight
+            if diff > 0:
+                diff_text = f"выше нормы на {diff:.1f} кг"
+            elif diff < 0:
+                diff_text = f"ниже нормы на {abs(diff):.1f} кг"
+            else:
+                diff_text = "идеальный вес"
+
+            self.bmi_result.setText(
+                f"ИМТ: {bmi:.1f} ({status})\n"
+                f"Идеальный вес для {gender}: {ideal_weight:.0f} кг\n"
+                f"Ваш вес {diff_text}"
+            )
         except ValueError:
             mb.warning(self, "Ошибка", "Введите корректные числа для веса и роста.")
 
@@ -1211,6 +1238,7 @@ class DoctorWindow(QMainWindow):
             path += ".pdf"
         try:
             pdf_exporter.export_patients_to_pdf(path, self.patients, f"Пациенты врача: {self.full_name}")
+            db.log_action(self.id_user, "export_pdf")  # ЛОГ
             mb.info(self, "Готово", "Список пациентов выгружен.")
         except Exception as e:
             mb.critical(self, "Ошибка", f"Не удалось: {e}")
@@ -1224,6 +1252,7 @@ class DoctorWindow(QMainWindow):
         entries = db.get_diary_full(id_patient)
         try:
             pdf_exporter.export_diary_to_pdf(path, patient_name, entries, db.get_indicators_for_diary)
+            db.log_action(self.id_user, "export_pdf")  # ЛОГ
             mb.info(self, "Готово", "Дневник пациента выгружен.")
         except Exception as e:
             mb.critical(self, "Ошибка", f"Не удалось: {e}")

@@ -965,25 +965,24 @@ def get_users_crm():
 
 
 def log_action(id_user, action, entity_type=None, entity_id=None):
-    """Запись в журнал действий. Ошибка журнала не должна ломать основное действие."""
     conn = get_connection()
-    if not conn:
-        return
+    if not conn: return False
     try:
+        # Если entity_id пустой, ставим 0, чтобы база не ругалась
+        entity_id = entity_id or 0
+
         cur = conn.cursor()
-        cur.execute(
-            """
+        cur.execute("""
             INSERT INTO audit_log (id_user, actionn, entity_type, entity_id, ip_address)
             VALUES (%s, %s, %s, %s, '127.0.0.1')
-        """,
-            (id_user, action, entity_type, entity_id),
-        )
+        """, (id_user, action, entity_type, entity_id))
         conn.commit()
+        return True
     except mysql.connector.Error as err:
-        print(f"Ошибка журнала: {err}")
+        print(f"Ошибка лога: {err}")
+        return False
     finally:
         conn.close()
-
 
 def get_audit_log(limit=100):
     conn = get_connection()
