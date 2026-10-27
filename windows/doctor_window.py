@@ -16,7 +16,8 @@ from windows.common import DiaryCard, MoodTrend, RxCard, human_date
 from windows import msgbox as mb
 from windows import widgets as w
 
-TAB_COLORS = ["#1E4470", "#2F5C8F", "#5A7CA6", "#7A9CC6"]
+# Добавили 5-й цвет для новой вкладки
+TAB_COLORS = ["#1E4470", "#2F5C8F", "#5A7CA6", "#7A9CC6", "#8FA8C4"]
 FREQUENCIES = ["1 раз в день", "2 раза в день", "3 раза в день", "4 раза в день", "через день", "1 раз в неделю",
                "при боли", "при приступе"]
 
@@ -296,17 +297,18 @@ class DoctorWindow(QMainWindow):
         self.tabs.add_tab(self._build_patients(), "Мои пациенты", "users", TAB_COLORS[0])
         self.tabs.add_tab(self._build_prescriptions(), "Назначения", "pill", TAB_COLORS[1])
         self.tabs.add_tab(self._build_diaries(), "Дневники", "book", TAB_COLORS[2])
-        self.tabs.add_tab(self._build_help(), "Справка", "file", TAB_COLORS[3])
+        self.tabs.add_tab(self._build_calculators(), "Калькуляторы", "thermo", TAB_COLORS[3])
+        self.tabs.add_tab(self._build_help(), "Справка", "file", TAB_COLORS[4])
         self.tabs.currentChanged.connect(lambda _: self.panel.close_panel())
         root.addWidget(self.tabs, 1)
 
         self.panel = w.SidePanel(central)
 
-        QShortcut(QKeySequence("F1"), self, lambda: self.tabs.set_current(3))
+        QShortcut(QKeySequence("F1"), self, lambda: self.tabs.set_current(4))
         QShortcut(QKeySequence("Ctrl+Q"), self, self.on_logout)
         QShortcut(QKeySequence("Ctrl+N"), self, self.on_new_patient)
         QShortcut(QKeySequence("Ctrl+F"), self, self._focus_search)
-        for i in range(4):
+        for i in range(5):
             QShortcut(QKeySequence(f"Ctrl+{i + 1}"), self, lambda i=i: self.tabs.set_current(i))
 
         QTimer.singleShot(50, self.refresh_all)
@@ -544,6 +546,139 @@ class DoctorWindow(QMainWindow):
         lay.addWidget(w.make_scroll(self.diary_inner), 1)
         return page
 
+    # --- НОВАЯ ВКЛАДКА: КАЛЬКУЛЯТОРЫ ---
+    def _build_calculators(self):
+        pl = w.pal()
+        page = QWidget()
+        lay = QHBoxLayout(page)
+        lay.setContentsMargins(0, 0, 0, 0)
+        lay.setSpacing(16)
+
+        # 1. Калькулятор ИМТ
+        bmi_card = w.AnimatedCard(clickable=False)
+        bmi_card.body_layout.addWidget(w.label("Индекс массы тела (ИМТ)", 13, bold=True))
+
+        bmi_grid = QGridLayout()
+        bmi_grid.setSpacing(8)
+
+        self.bmi_weight = QLineEdit()
+        self.bmi_weight.setPlaceholderText("70")
+        self.bmi_height = QLineEdit()
+        self.bmi_height.setPlaceholderText("170")
+
+        bmi_grid.addWidget(w.label("Вес (кг)", 9, color=pl["muted"]), 0, 0)
+        bmi_grid.addWidget(w.label("Рост (см)", 9, color=pl["muted"]), 0, 1)
+        bmi_grid.addWidget(self.bmi_weight, 1, 0)
+        bmi_grid.addWidget(self.bmi_height, 1, 1)
+        bmi_card.body_layout.addLayout(bmi_grid)
+
+        bmi_btn = w.primary_button("Рассчитать ИМТ")
+        bmi_btn.clicked.connect(self._calc_bmi)
+        bmi_card.body_layout.addWidget(bmi_btn)
+
+        self.bmi_result = w.label("", 12, bold=True, color=pl["accent"], wrap=True)
+        bmi_card.body_layout.addWidget(self.bmi_result)
+        bmi_card.body_layout.addStretch()
+        lay.addWidget(bmi_card)
+
+        # 2. Норма воды
+        water_card = w.AnimatedCard(clickable=False)
+        water_card.body_layout.addWidget(w.label("Норма воды в сутки", 13, bold=True))
+
+        self.water_weight = QLineEdit()
+        self.water_weight.setPlaceholderText("70")
+        water_card.body_layout.addWidget(w.label("Вес (кг)", 9, color=pl["muted"]))
+        water_card.body_layout.addWidget(self.water_weight)
+
+        water_btn = w.primary_button("Рассчитать воду")
+        water_btn.clicked.connect(self._calc_water)
+        water_card.body_layout.addWidget(water_btn)
+
+        self.water_result = w.label("", 12, bold=True, color=pl["accent"], wrap=True)
+        water_card.body_layout.addWidget(self.water_result)
+        water_card.body_layout.addStretch()
+        lay.addWidget(water_card)
+
+        # 3. Индекс курильщика
+        smoke_card = w.AnimatedCard(clickable=False)
+        smoke_card.body_layout.addWidget(w.label("Индекс курильщика", 13, bold=True))
+
+        smoke_grid = QGridLayout()
+        smoke_grid.setSpacing(8)
+
+        self.smoke_cigs = QLineEdit()
+        self.smoke_cigs.setPlaceholderText("20")
+        self.smoke_years = QLineEdit()
+        self.smoke_years.setPlaceholderText("10")
+
+        smoke_grid.addWidget(w.label("Сигарет в день", 9, color=pl["muted"]), 0, 0)
+        smoke_grid.addWidget(w.label("Лет курения", 9, color=pl["muted"]), 0, 1)
+        smoke_grid.addWidget(self.smoke_cigs, 1, 0)
+        smoke_grid.addWidget(self.smoke_years, 1, 1)
+        smoke_card.body_layout.addLayout(smoke_grid)
+
+        smoke_btn = w.primary_button("Рассчитать индекс")
+        smoke_btn.clicked.connect(self._calc_smoker)
+        smoke_card.body_layout.addWidget(smoke_btn)
+
+        self.smoke_result = w.label("", 12, bold=True, color=pl["accent"], wrap=True)
+        smoke_card.body_layout.addWidget(self.smoke_result)
+        smoke_card.body_layout.addStretch()
+        lay.addWidget(smoke_card)
+
+        return page
+
+    def _calc_bmi(self):
+        try:
+            weight = float(self.bmi_weight.text().replace(",", "."))
+            height = float(self.bmi_height.text().replace(",", ".")) / 100
+            if height <= 0 or weight <= 0:
+                raise ValueError
+            bmi = weight / (height ** 2)
+
+            if bmi < 18.5:
+                status = "Недостаточный вес"
+            elif bmi < 25:
+                status = "Норма"
+            elif bmi < 30:
+                status = "Избыточный вес"
+            else:
+                status = "Ожирение"
+
+            self.bmi_result.setText(f"ИМТ: {bmi:.1f}\n({status})")
+        except ValueError:
+            mb.warning(self, "Ошибка", "Введите корректные числа для веса и роста.")
+
+    def _calc_water(self):
+        try:
+            weight = float(self.water_weight.text().replace(",", "."))
+            if weight <= 0:
+                raise ValueError
+            water = weight * 30
+            self.water_result.setText(f"Норма: {water:.0f} мл\n({water / 1000:.1f} литра)")
+        except ValueError:
+            mb.warning(self, "Ошибка", "Введите корректный вес.")
+
+    def _calc_smoker(self):
+        try:
+            cigs = float(self.smoke_cigs.text().replace(",", "."))
+            years = float(self.smoke_years.text().replace(",", "."))
+            if cigs < 0 or years < 0:
+                raise ValueError
+
+            index = (cigs * years) / 20
+
+            if index < 10:
+                status = "Низкий риск"
+            elif index < 20:
+                status = "Умеренный риск"
+            else:
+                status = "Высокий риск ХОБЛ"
+
+            self.smoke_result.setText(f"Индекс: {index:.1f}\n({status})")
+        except ValueError:
+            mb.warning(self, "Ошибка", "Введите корректные числа.")
+
     def _build_help(self):
         pl = w.pal()
         inner = QWidget()
@@ -556,6 +691,8 @@ class DoctorWindow(QMainWindow):
              "Выберите пациента и препарат плиткой, укажите дозировку и курс. Время приёма добавляется чипами — пациенту в эти часы придёт напоминание. Клик по назначению справа позволяет завершить или возобновить курс."),
             ("book", "Дневники",
              "Лента записей пациента с графиком самочувствия. Кнопка «Диагноз и комментарий» открывает справочник МКБ-10 и поле для рекомендаций."),
+            ("thermo", "Калькуляторы",
+             "Быстрый расчет индекса массы тела (ИМТ), суточной нормы воды и индекса курильщика. Введите данные и нажмите кнопку для получения результата."),
             ("user", "Профиль",
              "Нажмите на своё фото в шапке, чтобы загрузить или заменить фотографию. Специальность, кабинет и график меняет администратор."),
         ]
@@ -570,7 +707,7 @@ class DoctorWindow(QMainWindow):
 
         keys = w.AnimatedCard(width=330, clickable=False)
         keys.body_layout.addWidget(w.label("Горячие клавиши", 11, bold=True))
-        for k, d in (("Ctrl+1…4", "переключение вкладок"), ("Ctrl+N", "новый пациент"), ("Ctrl+F", "поиск"),
+        for k, d in (("Ctrl+1…5", "переключение вкладок"), ("Ctrl+N", "новый пациент"), ("Ctrl+F", "поиск"),
                      ("Esc", "закрыть боковую панель"), ("F1", "справка"), ("Ctrl+Q", "выйти")):
             r = QHBoxLayout()
             key = w.label(k, 9, bold=True, color=pl["accent"])
