@@ -634,9 +634,32 @@ class AdminAnalyticsWindow(QMainWindow):
         self.setWindowTitle("Дневник терапии — CRM клиники")
         self.resize(1400, 900)
         self.setMinimumSize(1100, 720)
+
+        # ИСПРАВЛЕНИЕ: Добавлены стили для полей ввода и списков, чтобы текст не пропадал
+        fix_qss = f"""
+            QLineEdit, QTextEdit, QPlainTextEdit, QTimeEdit, QDateEdit, QComboBox, QSpinBox, QDoubleSpinBox {{
+                color: {pl['text']};
+                background-color: {pl['card']};
+            }}
+            QComboBox QAbstractItemView {{
+                color: {pl['text']};
+                background-color: {pl['card']};
+                selection-background-color: {pl['accent']};
+                selection-color: #FFFFFF;
+            }}
+            QListWidget {{
+                color: {pl['text']};
+                background-color: {pl['card']};
+            }}
+            QListWidget::item:selected {{
+                color: #FFFFFF;
+                background-color: {pl['accent']};
+            }}
+        """
+
         central = QWidget()
         central.setObjectName("crmRoot")
-        central.setStyleSheet(f"QWidget#crmRoot {{ background: {pl['bg']}; }}" + w.input_qss())
+        central.setStyleSheet(f"QWidget#crmRoot {{ background: {pl['bg']}; }}" + w.input_qss() + fix_qss)
         self.setCentralWidget(central)
         root = QVBoxLayout(central)
         root.setContentsMargins(26, 18, 26, 12)

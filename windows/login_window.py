@@ -337,3 +337,5 @@ class LoginWindow(QMainWindow):
         self.child_window = None
         self.show()
         theme.apply_to_window(self, theme.is_dark())
+
+

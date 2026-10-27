@@ -2,6 +2,7 @@ import hashlib
 import random
 import string
 from datetime import date, timedelta
+import logging
 
 import mysql.connector
 
@@ -1247,3 +1248,5 @@ def update_user_password(id_user, old_password, new_password):
         return False, "Ошибка базы данных"
     finally:
         conn.close()
+
+

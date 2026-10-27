@@ -278,9 +278,31 @@ class DoctorWindow(QMainWindow):
         self.resize(1400, 900)
         self.setMinimumSize(1150, 740)
 
+        # ИСПРАВЛЕНИЕ: Добавлены стили для полей ввода и списков, чтобы текст не пропадал
+        fix_qss = f"""
+            QLineEdit, QTextEdit, QPlainTextEdit, QTimeEdit, QDateEdit, QComboBox, QSpinBox, QDoubleSpinBox {{
+                color: {pl['text']};
+                background-color: {pl['card']};
+            }}
+            QComboBox QAbstractItemView {{
+                color: {pl['text']};
+                background-color: {pl['card']};
+                selection-background-color: {pl['accent']};
+                selection-color: #FFFFFF;
+            }}
+            QListWidget {{
+                color: {pl['text']};
+                background-color: {pl['card']};
+            }}
+            QListWidget::item:selected {{
+                color: #FFFFFF;
+                background-color: {pl['accent']};
+            }}
+        """
+
         central = QWidget()
         central.setObjectName("docRoot")
-        central.setStyleSheet(f"QWidget#docRoot {{ background: {pl['bg']}; }}" + w.input_qss())
+        central.setStyleSheet(f"QWidget#docRoot {{ background: {pl['bg']}; }}" + w.input_qss() + fix_qss)
         self.setCentralWidget(central)
 
         root = QVBoxLayout(central)

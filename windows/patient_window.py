@@ -415,9 +415,32 @@ class PatientWindow(QMainWindow):
         self.setWindowTitle("Дневник терапии — личный кабинет")
         self.resize(1360, 900)
         self.setMinimumSize(1120, 740)
+
+        # ИСПРАВЛЕНИЕ: Добавлены стили для полей ввода и списков, чтобы текст не пропадал
+        fix_qss = f"""
+            QLineEdit, QTextEdit, QPlainTextEdit, QTimeEdit, QDateEdit, QComboBox, QSpinBox, QDoubleSpinBox {{
+                color: {pl['text']};
+                background-color: {pl['card']};
+            }}
+            QComboBox QAbstractItemView {{
+                color: {pl['text']};
+                background-color: {pl['card']};
+                selection-background-color: {pl['accent']};
+                selection-color: #FFFFFF;
+            }}
+            QListWidget {{
+                color: {pl['text']};
+                background-color: {pl['card']};
+            }}
+            QListWidget::item:selected {{
+                color: #FFFFFF;
+                background-color: {pl['accent']};
+            }}
+        """
+
         central = QWidget()
         central.setObjectName("patRoot")
-        central.setStyleSheet(f"QWidget#patRoot {{ background: {pl['bg']}; }}" + w.input_qss())
+        central.setStyleSheet(f"QWidget#patRoot {{ background: {pl['bg']}; }}" + w.input_qss() + fix_qss)
         self.setCentralWidget(central)
 
         self.load_data()
