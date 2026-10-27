@@ -288,11 +288,23 @@ def input_qss():
         QLineEdit:focus, QComboBox:focus, QDateEdit:focus, QTextEdit:focus {{
             border: 2px solid {p['accent']};
         }}
-        QComboBox::drop-down, QDateEdit::drop-down {{ border: none; width: 24px; }}
-        QComboBox QAbstractItemView {{
-            background: {p['card']}; color: {p['text']};
-            selection-background-color: {p['accent']}; selection-color: #FFFFFF;
+        QComboBox::drop-down, QDateEdit::drop-down {{ 
+            border: none; width: 24px; 
         }}
+
+        /* Вот тут настройки выпадающего списка */
+        QComboBox QAbstractItemView {{
+            background-color: {p['card']}; 
+            color: {p['text']};
+            border: 1px solid {p['line']};
+            selection-background-color: {p['accent']}; 
+            selection-color: #FFFFFF;
+            outline: none;
+        }}
+        QComboBox QAbstractItemView::item {{
+            padding: 6px 10px;
+        }}
+
         QLabel {{ color: {p['text']}; background: transparent; font-family: '{FONT}'; }}
         QCheckBox {{ color: {p['text']}; font-family: '{FONT}'; font-size: 10pt; spacing: 8px; }}
     """

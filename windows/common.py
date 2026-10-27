@@ -492,3 +492,68 @@ class DiaryCard(w.AnimatedCard):
                                      color=pl["muted"]))
                 bl.addWidget(w.label(c["text"], 9, wrap=True))
             content.addWidget(box)
+
+
+class ChangePasswordDialog(QDialog):
+    def __init__(self, parent, id_user):
+        super().__init__(parent)
+        self.id_user = id_user
+        pl = w.pal()
+        self.setWindowTitle("Смена пароля")
+        self.setMinimumWidth(400)
+        self.setStyleSheet(f"QDialog {{ background: {pl['bg']}; }}" + w.input_qss())
+
+        lay = QVBoxLayout(self)
+        lay.setContentsMargins(24, 24, 24, 24)
+        lay.setSpacing(10)
+
+        lay.addWidget(w.label("Смена пароля", 15, bold=True))
+
+        lay.addWidget(w.label("Текущий пароль", 9, color=pl["muted"]))
+        self.old_pass = QLineEdit()
+        self.old_pass.setEchoMode(QLineEdit.EchoMode.Password)
+        lay.addWidget(self.old_pass)
+
+        lay.addWidget(w.label("Новый пароль (мин. 6 символов)", 9, color=pl["muted"]))
+        self.new_pass = QLineEdit()
+        self.new_pass.setEchoMode(QLineEdit.EchoMode.Password)
+        lay.addWidget(self.new_pass)
+
+        lay.addWidget(w.label("Повторите новый пароль", 9, color=pl["muted"]))
+        self.confirm_pass = QLineEdit()
+        self.confirm_pass.setEchoMode(QLineEdit.EchoMode.Password)
+        lay.addWidget(self.confirm_pass)
+
+        btns = QHBoxLayout()
+        btns.addStretch()
+        cancel = w.ghost_button("Отмена")
+        cancel.clicked.connect(self.reject)
+        save = w.primary_button("Сохранить")
+        save.clicked.connect(self.do_save)
+        btns.addWidget(cancel)
+        btns.addWidget(save)
+        lay.addLayout(btns)
+
+    def do_save(self):
+        old_p = self.old_pass.text()
+        new_p = self.new_pass.text()
+        conf_p = self.confirm_pass.text()
+
+        if not old_p or not new_p or not conf_p:
+            mb.warning(self, "Ошибка", "Заполните все поля")
+            return
+
+        if new_p != conf_p:
+            mb.warning(self, "Ошибка", "Новые пароли не совпадают")
+            return
+
+        if len(new_p) < 6:
+            mb.warning(self, "Ошибка", "Новый пароль должен быть минимум 6 символов")
+            return
+
+        ok, msg = db.update_user_password(self.id_user, old_p, new_p)
+        if ok:
+            mb.info(self, "Готово", msg)
+            self.accept()
+        else:
+            mb.warning(self, "Ошибка", msg)

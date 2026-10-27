@@ -1,36 +1,15 @@
-"""Кабинет врача.
-
-Вкладки-папки: Пациенты, Назначения, Дневники, Справка.
-Пациенты и назначения показаны карточками с анимацией, препараты —
-нарисованными таблетками/капсулами, у врача в шапке его фотография.
-Клик по карточке открывает выезжающую справа панель с подробностями.
-"""
-
+"""Кабинет врача."""
 from datetime import date, datetime
-
 from PySide6.QtCore import QDate, Qt, QTime, QTimer
 from PySide6.QtGui import QFont, QKeySequence, QShortcut
 from PySide6.QtWidgets import (
-    QComboBox,
-    QDateEdit,
-    QDialog,
-    QFileDialog,
-    QFrame,
-    QGridLayout,
-    QHBoxLayout,
-    QLabel,
-    QLineEdit,
-    QListWidget,
-    QMainWindow,
-    QPushButton,
-    QScrollArea,
-    QTextEdit,
-    QTimeEdit,
-    QVBoxLayout,
-    QWidget,
+    QComboBox, QDateEdit, QDialog, QFileDialog, QFrame,
+    QGridLayout, QHBoxLayout, QLabel, QLineEdit, QListWidget,
+    QMainWindow, QPushButton, QScrollArea, QTextEdit, QTimeEdit,
+    QVBoxLayout, QWidget,
 )
-
 import db
+import pdf_exporter
 from validators import validate_birth_date, validate_name, validate_phone, validate_policy
 from windows import common
 from windows.common import DiaryCard, MoodTrend, RxCard, human_date
@@ -38,23 +17,18 @@ from windows import msgbox as mb
 from windows import widgets as w
 
 TAB_COLORS = ["#1E4470", "#2F5C8F", "#5A7CA6", "#7A9CC6"]
-FREQUENCIES = ["1 раз в день", "2 раза в день", "3 раза в день", "4 раза в день",
-               "через день", "1 раз в неделю", "при боли", "при приступе"]
+FREQUENCIES = ["1 раз в день", "2 раза в день", "3 раза в день", "4 раза в день", "через день", "1 раз в неделю",
+               "при боли", "при приступе"]
 
 
-# ============== МАЛЕНЬКИЕ ВИДЖЕТЫ ==============
 class TimeChip(QFrame):
-    """Время приёма в форме назначения: «08:00 ✕»."""
-
     def __init__(self, text, on_remove):
         super().__init__()
         pl = w.pal()
         self.text = text
         self.setObjectName("timeChip")
         self.setStyleSheet(
-            f"QFrame#timeChip {{ background: {pl['accent']}; border-radius: 15px; }}"
-            f"QLabel {{ color: white; background: transparent; }}"
-        )
+            f"QFrame#timeChip {{ background: {pl['accent']}; border-radius: 15px; }} QLabel {{ color: white; background: transparent; }}")
         lay = QHBoxLayout(self)
         lay.setContentsMargins(12, 4, 4, 4)
         lay.setSpacing(4)
@@ -63,14 +37,11 @@ class TimeChip(QFrame):
         close.setFixedSize(22, 22)
         close.setCursor(Qt.CursorShape.PointingHandCursor)
         close.setStyleSheet(
-            "QPushButton { background: rgba(255,255,255,0.18); color: white; border: none; border-radius: 11px; }"
-            "QPushButton:hover { background: rgba(255,255,255,0.35); }"
-        )
+            "QPushButton { background: rgba(255,255,255,0.18); color: white; border: none; border-radius: 11px; } QPushButton:hover { background: rgba(255,255,255,0.35); }")
         close.clicked.connect(lambda: on_remove(self))
         lay.addWidget(close)
 
 
-# ============== КАРТОЧКИ ==============
 class PatientCard(w.AnimatedCard):
     def __init__(self, p, active_rx):
         mood, mood_color = w.mood_of(p["last_wellbeing"])
@@ -121,17 +92,14 @@ class PatientCard(w.AnimatedCard):
 
         stats = QHBoxLayout()
         stats.setSpacing(6)
-        stats.addWidget(w.chip(w.plural(len(active_rx), "назначение", "назначения", "назначений"),
-                               pl["accent_soft"], pl["accent"]))
-        stats.addWidget(w.chip(w.plural(p["diary_count"], "запись", "записи", "записей"),
-                               pl["card_alt"], pl["muted"]))
+        stats.addWidget(
+            w.chip(w.plural(len(active_rx), "назначение", "назначения", "назначений"), pl["accent_soft"], pl["accent"]))
+        stats.addWidget(w.chip(w.plural(p["diary_count"], "запись", "записи", "записей"), pl["card_alt"], pl["muted"]))
         stats.addStretch()
         self.body_layout.addLayout(stats)
 
 
 class MedTile(w.AnimatedCard):
-    """Плитка препарата в форме назначения — с нарисованной таблеткой."""
-
     def __init__(self, m):
         super().__init__(width=126)
         pl = w.pal()
@@ -141,7 +109,6 @@ class MedTile(w.AnimatedCard):
         self.body_layout.setSpacing(4)
         self.pill = w.PillIcon(m["form"], m["name_med"], 50)
         self.body_layout.addWidget(self.pill, 0, Qt.AlignmentFlag.AlignHCenter)
-        # Длинное название (Ацетилсалициловая кислота) сокращаем, полное — в подсказке
         title = m["name_med"] if len(m["name_med"]) <= 12 else m["name_med"][:10].rstrip() + "…"
         name = w.label(title, 9, bold=True, wrap=True)
         name.setAlignment(Qt.AlignmentFlag.AlignCenter)
@@ -152,8 +119,6 @@ class MedTile(w.AnimatedCard):
 
 
 class PatientPicker(QScrollArea):
-    """Горизонтальная лента пациентов с аватарами для вкладки «Дневники»."""
-
     def __init__(self, on_pick):
         super().__init__()
         self.on_pick = on_pick
@@ -162,8 +127,8 @@ class PatientPicker(QScrollArea):
         self.setFixedHeight(66)
         self.setFrameShape(QFrame.Shape.NoFrame)
         self.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
-        self.setStyleSheet("QScrollArea { background: transparent; border: none; }"
-                           "QScrollArea > QWidget > QWidget { background: transparent; }")
+        self.setStyleSheet(
+            "QScrollArea { background: transparent; border: none; } QScrollArea > QWidget > QWidget { background: transparent; }")
         self.inner = QWidget()
         self.row = QHBoxLayout(self.inner)
         self.row.setContentsMargins(0, 0, 0, 0)
@@ -182,12 +147,8 @@ class PatientPicker(QScrollArea):
             btn.setCheckable(True)
             btn.setCursor(Qt.CursorShape.PointingHandCursor)
             btn.setMinimumHeight(52)
-            btn.setStyleSheet(f"""
-                QPushButton {{ background: {pl['card']}; border: 1px solid {pl['line']};
-                    border-radius: 26px; padding: 0 14px 0 4px; text-align: left; }}
-                QPushButton:hover {{ border-color: {pl['accent']}; }}
-                QPushButton:checked {{ background: {pl['accent_soft']}; border: 2px solid {pl['accent']}; }}
-            """)
+            btn.setStyleSheet(
+                f"QPushButton {{ background: {pl['card']}; border: 1px solid {pl['line']}; border-radius: 26px; padding: 0 14px 0 4px; text-align: left; }} QPushButton:hover {{ border-color: {pl['accent']}; }} QPushButton:checked {{ background: {pl['accent_soft']}; border: 2px solid {pl['accent']}; }}")
             lay = QHBoxLayout(btn)
             lay.setContentsMargins(4, 4, 14, 4)
             lay.setSpacing(8)
@@ -207,11 +168,7 @@ class PatientPicker(QScrollArea):
             self.on_pick(id_patient)
 
 
-# ============== ДИАЛОГ НОВОГО ПАЦИЕНТА ==============
 class NewPatientDialog(QDialog):
-    """Регистрация пациента врачом. Логин и пароль формируются автоматически,
-    пациент сразу прикрепляется к этому врачу."""
-
     def __init__(self, parent, id_doctor):
         super().__init__(parent)
         pl = w.pal()
@@ -220,6 +177,7 @@ class NewPatientDialog(QDialog):
         self.setWindowTitle("Новый пациент")
         self.setMinimumWidth(500)
         self.setStyleSheet(f"QDialog {{ background: {pl['bg']}; }}" + w.input_qss())
+
         lay = QVBoxLayout(self)
         lay.setContentsMargins(26, 22, 26, 22)
         lay.setSpacing(8)
@@ -249,6 +207,7 @@ class NewPatientDialog(QDialog):
         lay.addWidget(w.label("ФИО", 9, color=pl["muted"]))
         lay.addWidget(self.full_name)
         lay.addWidget(self.login_hint)
+
         grid = QGridLayout()
         grid.setHorizontalSpacing(12)
         grid.setVerticalSpacing(4)
@@ -277,19 +236,17 @@ class NewPatientDialog(QDialog):
     def _create(self):
         full_name = self.full_name.text().strip()
         birth = self.birth.date().toString("yyyy-MM-dd")
-        for (ok, err), title in ((validate_name(full_name), "Ошибка в ФИО"),
-                                 (validate_birth_date(birth), "Ошибка в дате рождения"),
-                                 (validate_policy(self.policy.text()), "Ошибка в полисе"),
-                                 (validate_phone(self.phone.text()), "Ошибка в телефоне")):
+        for (ok, err), title in (
+                (validate_name(full_name), "Ошибка в ФИО"), (validate_birth_date(birth), "Ошибка в дате рождения"),
+                (validate_policy(self.policy.text()), "Ошибка в полисе"),
+                (validate_phone(self.phone.text()), "Ошибка в телефоне")):
             if not ok:
                 mb.warning(self, title, err)
                 return
         login = db.find_free_login(db.generate_login(full_name))
         password = db.generate_password()
-        id_user = db.create_patient_by_doctor(
-            self.id_doctor, full_name, birth, self.gender.currentText(),
-            self.policy.text().strip(), self.phone.text().strip(), login, password,
-        )
+        id_user = db.create_patient_by_doctor(self.id_doctor, full_name, birth, self.gender.currentText(),
+                                              self.policy.text().strip(), self.phone.text().strip(), login, password)
         if id_user is None:
             mb.critical(self, "Ошибка", "Не удалось создать пациента.")
             return
@@ -297,7 +254,6 @@ class NewPatientDialog(QDialog):
         self.accept()
 
 
-# ============== ОКНО ВРАЧА ==============
 class DoctorWindow(QMainWindow):
     def __init__(self, user_data, login_window=None):
         super().__init__()
@@ -312,7 +268,6 @@ class DoctorWindow(QMainWindow):
             return
         self.id_doctor = doctor[0]
         self.profile = db.get_doctor_crm(self.id_doctor) or {}
-
         self._selected_med = None
         self._med_tiles = []
         self._times = []
@@ -322,6 +277,7 @@ class DoctorWindow(QMainWindow):
         self.setWindowTitle("Дневник терапии — кабинет врача")
         self.resize(1400, 900)
         self.setMinimumSize(1150, 740)
+
         central = QWidget()
         central.setObjectName("docRoot")
         central.setStyleSheet(f"QWidget#docRoot {{ background: {pl['bg']}; }}" + w.input_qss())
@@ -331,6 +287,7 @@ class DoctorWindow(QMainWindow):
         root.setContentsMargins(26, 18, 26, 14)
         root.setSpacing(14)
         root.addLayout(self._build_header())
+
         self.kpi_row = QHBoxLayout()
         self.kpi_row.setSpacing(8)
         root.addLayout(self.kpi_row)
@@ -352,9 +309,8 @@ class DoctorWindow(QMainWindow):
         for i in range(4):
             QShortcut(QKeySequence(f"Ctrl+{i + 1}"), self, lambda i=i: self.tabs.set_current(i))
 
-        self.refresh_all()
+        QTimer.singleShot(50, self.refresh_all)
 
-    # ---------- шапка ----------
     def _build_header(self):
         pl = w.pal()
         row = QHBoxLayout()
@@ -363,14 +319,15 @@ class DoctorWindow(QMainWindow):
         logo.setFixedSize(44, 44)
         logo.setAlignment(Qt.AlignmentFlag.AlignCenter)
         logo.setFont(QFont(w.FONT, 13, QFont.Weight.Bold))
-        logo.setStyleSheet("color: white; border-radius: 13px;"
-                           "background: qlineargradient(x1:0,y1:0,x2:1,y2:1, stop:0 #2F5C8F, stop:1 #163257);")
+        logo.setStyleSheet(
+            "color: white; border-radius: 13px; background: qlineargradient(x1:0,y1:0,x2:1,y2:1, stop:0 #2F5C8F, stop:1 #163257);")
         row.addWidget(logo)
+
         titles = QVBoxLayout()
         titles.setSpacing(0)
         hour = datetime.now().hour
-        greeting = ("Доброе утро" if 5 <= hour < 12 else "Добрый день" if hour < 18
-                    else "Добрый вечер" if hour < 23 else "Доброй ночи")
+        greeting = (
+            "Доброе утро" if 5 <= hour < 12 else "Добрый день" if hour < 18 else "Добрый вечер" if hour < 23 else "Доброй ночи")
         parts = self.full_name.split()
         name = " ".join(parts[1:3]) if len(parts) > 1 else self.full_name
         titles.addWidget(w.label(f"{greeting}, {name}!", 15, bold=True))
@@ -383,20 +340,16 @@ class DoctorWindow(QMainWindow):
         add.clicked.connect(self.on_new_patient)
         row.addWidget(add)
 
-        # Карточка «я» с фотографией врача — по клику открывается профиль
         self.me_btn = QPushButton()
         self.me_btn.setCursor(Qt.CursorShape.PointingHandCursor)
         self.me_btn.setToolTip("Мой профиль и фото")
         self.me_btn.setMinimumHeight(56)
-        self.me_btn.setStyleSheet(f"""
-            QPushButton {{ background: {pl['card']}; border: 1px solid {pl['line']}; border-radius: 28px; }}
-            QPushButton:hover {{ border-color: {pl['accent']}; }}
-        """)
+        self.me_btn.setStyleSheet(
+            f"QPushButton {{ background: {pl['card']}; border: 1px solid {pl['line']}; border-radius: 28px; }} QPushButton:hover {{ border-color: {pl['accent']}; }}")
         me = QHBoxLayout(self.me_btn)
         me.setContentsMargins(5, 4, 16, 4)
         me.setSpacing(10)
-        self.me_avatar = w.Avatar(self.full_name, 46, w.doctor_photo_path(self.profile.get("photo")),
-                                  ring=pl["accent"])
+        self.me_avatar = w.Avatar(self.full_name, 46, w.doctor_photo_path(self.profile.get("photo")), ring=pl["accent"])
         me.addWidget(self.me_avatar)
         me_col = QVBoxLayout()
         me_col.setSpacing(0)
@@ -413,29 +366,32 @@ class DoctorWindow(QMainWindow):
         row.addWidget(logout)
         return row
 
-    # ---------- вкладка «Мои пациенты» ----------
     def _build_patients(self):
         page = QWidget()
         lay = QVBoxLayout(page)
         lay.setContentsMargins(0, 0, 0, 0)
         lay.setSpacing(12)
+
         bar = QHBoxLayout()
         bar.setSpacing(10)
         self.patient_search = w.search_line("Поиск по ФИО, полису, телефону")
         self.patient_search.textChanged.connect(self._render_patients)
-        self.patient_filter = w.SegmentedFilter([("all", "Все"), ("attention", "Требуют внимания"),
-                                                 ("no_rx", "Без назначений")])
+        self.patient_filter = w.SegmentedFilter(
+            [("all", "Все"), ("attention", "Требуют внимания"), ("no_rx", "Без назначений")])
         self.patient_filter.changed.connect(self._render_patients)
+        export_btn = w.ghost_button("Выгрузить список PDF")
+        export_btn.clicked.connect(self.export_my_patients_pdf)
         bar.addWidget(self.patient_search, 1)
         bar.addWidget(self.patient_filter)
+        bar.addWidget(export_btn)
         lay.addLayout(bar)
+
         self.patients_count = w.label("", 9, color=w.pal()["muted"])
         lay.addWidget(self.patients_count)
         self.patients_grid = w.CardGrid("Пациенты не найдены")
         lay.addWidget(self.patients_grid, 1)
         return page
 
-    # ---------- вкладка «Назначения» ----------
     def _build_prescriptions(self):
         pl = w.pal()
         page = QWidget()
@@ -443,14 +399,12 @@ class DoctorWindow(QMainWindow):
         lay.setContentsMargins(0, 0, 0, 0)
         lay.setSpacing(18)
 
-        # --- форма слева ---
         form_inner = QWidget()
         form_inner.setStyleSheet("background: transparent;")
         form = QVBoxLayout(form_inner)
         form.setContentsMargins(0, 0, 8, 0)
         form.setSpacing(6)
         form.addWidget(w.label("Новое назначение", 13, bold=True))
-
         form.addWidget(w.label("Пациент", 9, color=pl["muted"]))
         self.rx_patient = QComboBox()
         form.addWidget(self.rx_patient)
@@ -460,12 +414,12 @@ class DoctorWindow(QMainWindow):
         med_head.addStretch()
         add_med = QPushButton("+ свой препарат")
         add_med.setCursor(Qt.CursorShape.PointingHandCursor)
-        add_med.setStyleSheet(f"QPushButton {{ color: {pl['accent']}; background: transparent; border: none;"
-                              f" font-family: '{w.FONT}'; font-size: 9pt; font-weight: 600; }}"
-                              f"QPushButton:hover {{ text-decoration: underline; }}")
+        add_med.setStyleSheet(
+            f"QPushButton {{ color: {pl['accent']}; background: transparent; border: none; font-family: '{w.FONT}'; font-size: 9pt; font-weight: 600; }} QPushButton:hover {{ text-decoration: underline; }}")
         add_med.clicked.connect(self.on_new_medication)
         med_head.addWidget(add_med)
         form.addLayout(med_head)
+
         self.med_search = w.search_line("Название препарата")
         self.med_search.textChanged.connect(self._render_meds)
         form.addWidget(self.med_search)
@@ -519,6 +473,7 @@ class DoctorWindow(QMainWindow):
             times.addWidget(b)
         times.addStretch()
         form.addLayout(times)
+
         self.times_box = QWidget()
         self.times_box.setStyleSheet("background: transparent;")
         self.times_flow = w.FlowLayout(self.times_box, spacing=6)
@@ -530,6 +485,7 @@ class DoctorWindow(QMainWindow):
         self.rx_comment.setPlaceholderText("Например: после еды, запивать водой")
         self.rx_comment.setFixedHeight(64)
         form.addWidget(self.rx_comment)
+
         create = w.primary_button("Назначить")
         create.clicked.connect(self.on_create_prescription)
         form.addSpacing(4)
@@ -542,7 +498,6 @@ class DoctorWindow(QMainWindow):
         form_card.body_layout.addWidget(w.make_scroll(form_inner))
         lay.addWidget(form_card)
 
-        # --- список назначений справа ---
         right = QVBoxLayout()
         right.setSpacing(10)
         head = QHBoxLayout()
@@ -552,6 +507,7 @@ class DoctorWindow(QMainWindow):
         self.rx_filter.changed.connect(self._render_rx)
         head.addWidget(self.rx_filter)
         right.addLayout(head)
+
         self.rx_patient_filter = QComboBox()
         self.rx_patient_filter.currentIndexChanged.connect(self._render_rx)
         right.addWidget(self.rx_patient_filter)
@@ -565,20 +521,17 @@ class DoctorWindow(QMainWindow):
         b = QPushButton(text)
         b.setCursor(Qt.CursorShape.PointingHandCursor)
         b.setMinimumHeight(32)
-        b.setStyleSheet(f"""
-            QPushButton {{ background: {pl['accent_soft']}; color: {pl['accent']}; border: none;
-                border-radius: 9px; padding: 4px 10px; font-family: '{w.FONT}'; font-size: 9pt; font-weight: 600; }}
-            QPushButton:hover {{ background: {pl['accent']}; color: white; }}
-        """)
+        b.setStyleSheet(
+            f"QPushButton {{ background: {pl['accent_soft']}; color: {pl['accent']}; border: none; border-radius: 9px; padding: 4px 10px; font-family: '{w.FONT}'; font-size: 9pt; font-weight: 600; }} QPushButton:hover {{ background: {pl['accent']}; color: white; }}")
         return b
 
-    # ---------- вкладка «Дневники» ----------
     def _build_diaries(self):
         pl = w.pal()
         page = QWidget()
         lay = QVBoxLayout(page)
         lay.setContentsMargins(0, 0, 0, 0)
         lay.setSpacing(10)
+
         self.picker = PatientPicker(self.show_diary)
         lay.addWidget(self.picker)
 
@@ -591,7 +544,6 @@ class DoctorWindow(QMainWindow):
         lay.addWidget(w.make_scroll(self.diary_inner), 1)
         return page
 
-    # ---------- вкладка «Справка» ----------
     def _build_help(self):
         pl = w.pal()
         inner = QWidget()
@@ -599,19 +551,13 @@ class DoctorWindow(QMainWindow):
         flow = w.FlowLayout(inner, spacing=12)
         sections = [
             ("users", "Мои пациенты",
-             "Карточки прикреплённых к вам пациентов. Цвет точки — последнее самочувствие "
-             "из дневника. Фильтр «Требуют внимания» оставляет тех, кому плохо. "
-             "Клик по карточке — карта пациента с назначениями и динамикой."),
+             "Карточки прикреплённых к вам пациентов. Цвет точки — последнее самочувствие из дневника. Фильтр «Требуют внимания» оставляет тех, кому плохо. Клик по карточке — карта пациента с назначениями и динамикой."),
             ("pill", "Назначения",
-             "Выберите пациента и препарат плиткой, укажите дозировку и курс. "
-             "Время приёма добавляется чипами — пациенту в эти часы придёт напоминание. "
-             "Клик по назначению справа позволяет завершить или возобновить курс."),
+             "Выберите пациента и препарат плиткой, укажите дозировку и курс. Время приёма добавляется чипами — пациенту в эти часы придёт напоминание. Клик по назначению справа позволяет завершить или возобновить курс."),
             ("book", "Дневники",
-             "Лента записей пациента с графиком самочувствия. Кнопка «Диагноз и комментарий» "
-             "открывает справочник МКБ-10 и поле для рекомендаций."),
+             "Лента записей пациента с графиком самочувствия. Кнопка «Диагноз и комментарий» открывает справочник МКБ-10 и поле для рекомендаций."),
             ("user", "Профиль",
-             "Нажмите на своё фото в шапке, чтобы загрузить или заменить фотографию. "
-             "Специальность, кабинет и график меняет администратор."),
+             "Нажмите на своё фото в шапке, чтобы загрузить или заменить фотографию. Специальность, кабинет и график меняет администратор."),
         ]
         for icon, title, text in sections:
             card = w.AnimatedCard(width=330, clickable=False)
@@ -621,11 +567,11 @@ class DoctorWindow(QMainWindow):
             card.body_layout.addLayout(head)
             card.body_layout.addWidget(w.label(text, 9, color=pl["muted"], wrap=True))
             flow.addWidget(card)
+
         keys = w.AnimatedCard(width=330, clickable=False)
         keys.body_layout.addWidget(w.label("Горячие клавиши", 11, bold=True))
-        for k, d in (("Ctrl+1…4", "переключение вкладок"), ("Ctrl+N", "новый пациент"),
-                     ("Ctrl+F", "поиск"), ("Esc", "закрыть боковую панель"),
-                     ("F1", "справка"), ("Ctrl+Q", "выйти")):
+        for k, d in (("Ctrl+1…4", "переключение вкладок"), ("Ctrl+N", "новый пациент"), ("Ctrl+F", "поиск"),
+                     ("Esc", "закрыть боковую панель"), ("F1", "справка"), ("Ctrl+Q", "выйти")):
             r = QHBoxLayout()
             key = w.label(k, 9, bold=True, color=pl["accent"])
             key.setMinimumWidth(80)
@@ -633,10 +579,8 @@ class DoctorWindow(QMainWindow):
             r.addWidget(w.label(d, 9, color=pl["muted"]), 1)
             keys.body_layout.addLayout(r)
         flow.addWidget(keys)
-        self._help_cards = [flow.itemAt(i).widget() for i in range(flow.count())]
         return w.make_scroll(inner)
 
-    # ---------- данные ----------
     def refresh_all(self):
         self.patients = [p for p in db.get_patients_crm() if p["id_doctor"] == self.id_doctor]
         self.rx = db.get_prescriptions_by_doctor(self.id_doctor)
@@ -675,14 +619,11 @@ class DoctorWindow(QMainWindow):
             if item.widget():
                 item.widget().deleteLater()
         week_ago = date.today().toordinal() - 6
-        attention = [p for p in self.patients
-                     if w.mood_of(p["last_wellbeing"])[0] in ("Плохо", "Очень плохо")]
-        recent = sum(1 for p in self.patients
-                     if p["last_entry"] and p["last_entry"].toordinal() >= week_ago)
+        attention = [p for p in self.patients if w.mood_of(p["last_wellbeing"])[0] in ("Плохо", "Очень плохо")]
+        recent = sum(1 for p in self.patients if p["last_entry"] and p["last_entry"].toordinal() >= week_ago)
         tiles = [
             w.KpiTile("users", "моих пациентов", len(self.patients), "#2F5C8F"),
-            w.KpiTile("pill", "активных назначений",
-                      sum(1 for r in self.rx if r["status"] == "active"), "#2F5C8F"),
+            w.KpiTile("pill", "активных назначений", sum(1 for r in self.rx if r["status"] == "active"), "#2F5C8F"),
             w.KpiTile("book", "пациентов вели дневник за неделю", recent, "#2F5C8F"),
             w.KpiTile("stethoscope", "требуют внимания", len(attention), "#2F5C8F",
                       "по последней записи" if attention else ""),
@@ -748,7 +689,6 @@ class DoctorWindow(QMainWindow):
             cards.append(card)
         self.rx_grid.set_cards(cards)
 
-    # ---------- время приёма ----------
     def _add_time(self, t):
         if t in self._times:
             return
@@ -767,17 +707,14 @@ class DoctorWindow(QMainWindow):
             self.times_flow.addWidget(TimeChip(t, self._remove_time))
         self.times_box.updateGeometry()
 
-    # ---------- действия ----------
     def on_new_patient(self):
         dlg = NewPatientDialog(self, self.id_doctor)
         if dlg.exec() and dlg.result_data:
             r = dlg.result_data
             db.log_action(self.id_user, "create_user", "users", r["id_user"])
             self.refresh_all()
-            common.CredentialsDialog(
-                self, r["login"], r["password"], "Пациент зарегистрирован",
-                "Пациент прикреплён к вам. Передайте ему логин и пароль для входа.",
-            ).exec()
+            common.CredentialsDialog(self, r["login"], r["password"], "Пациент зарегистрирован",
+                                     "Пациент прикреплён к вам. Передайте ему логин и пароль для входа.").exec()
             self.tabs.set_current(0)
 
     def on_new_medication(self):
@@ -807,11 +744,9 @@ class DoctorWindow(QMainWindow):
         if self.rx_end.date() < self.rx_start.date():
             mb.warning(self, "Даты", "Дата окончания раньше даты начала.")
             return
-        id_rx = db.create_prescription(
-            self.rx_patient.currentData(), self.id_doctor, self._selected_med, dosage, freq,
-            self.rx_start.date().toString("yyyy-MM-dd"), self.rx_end.date().toString("yyyy-MM-dd"),
-            self.rx_comment.toPlainText().strip(),
-        )
+        id_rx = db.create_prescription(self.rx_patient.currentData(), self.id_doctor, self._selected_med, dosage, freq,
+                                       self.rx_start.date().toString("yyyy-MM-dd"),
+                                       self.rx_end.date().toString("yyyy-MM-dd"), self.rx_comment.toPlainText().strip())
         if not id_rx:
             mb.critical(self, "Ошибка", "Не удалось создать назначение")
             return
@@ -844,7 +779,6 @@ class DoctorWindow(QMainWindow):
             self.login_window.return_from_child()
         self.close()
 
-    # ---------- боковая панель: пациент ----------
     def open_patient(self, id_patient):
         p = next((x for x in self.patients if x["id_patient"] == id_patient), None)
         if not p:
@@ -852,6 +786,7 @@ class DoctorWindow(QMainWindow):
         pl = w.pal()
         self.panel.open_panel("Карта пациента")
         lay = self.panel.content_layout
+
         mood, color = w.mood_of(p["last_wellbeing"])
         head = QHBoxLayout()
         head.setSpacing(14)
@@ -864,6 +799,10 @@ class DoctorWindow(QMainWindow):
         head.addLayout(col, 1)
         lay.addLayout(head)
 
+        exp_diary = w.ghost_button("Выгрузить дневник в PDF")
+        exp_diary.clicked.connect(lambda: self.export_diary_pdf(id_patient, p["full_name"]))
+        lay.addWidget(exp_diary)
+
         actions = QHBoxLayout()
         give = w.primary_button("Назначить препарат")
         give.clicked.connect(lambda: self._goto_prescribe(id_patient))
@@ -873,19 +812,16 @@ class DoctorWindow(QMainWindow):
         actions.addWidget(diary)
         lay.addLayout(actions)
 
-        lay.addWidget(w.info_block([
-            ("Дата рождения", common.fmt_date(p["birth_date"])),
-            ("Полис ОМС", p["policy_number"]),
-            ("Телефон", p["phone"]),
-            ("Логин", p["login"]),
-        ]))
+        lay.addWidget(w.info_block(
+            [("Дата рождения", common.fmt_date(p["birth_date"])), ("Полис ОМС", p["policy_number"]),
+             ("Телефон", p["phone"]), ("Логин", p["login"])]))
 
         entries = db.get_diary_full(id_patient)
         lay.addWidget(w.section_title("Динамика самочувствия"))
         trend_box = QFrame()
         trend_box.setObjectName("trendBox")
-        trend_box.setStyleSheet(f"QFrame#trendBox {{ background: {pl['card']}; border-radius: 14px;"
-                                f" border: 1px solid {pl['line']}; }}")
+        trend_box.setStyleSheet(
+            f"QFrame#trendBox {{ background: {pl['card']}; border-radius: 14px; border: 1px solid {pl['line']}; }}")
         tl = QVBoxLayout(trend_box)
         tl.setContentsMargins(8, 8, 8, 4)
         tl.addWidget(MoodTrend(entries, 120))
@@ -910,11 +846,11 @@ class DoctorWindow(QMainWindow):
         self.tabs.set_current(2)
         self.picker.select(id_patient, notify=True)
 
-    # ---------- боковая панель: назначение ----------
     def open_prescription(self, r):
         pl = w.pal()
         self.panel.open_panel("Назначение")
         lay = self.panel.content_layout
+
         head = QHBoxLayout()
         head.setSpacing(14)
         pill = w.PillIcon(r["form"], r["name_med"], 84)
@@ -926,17 +862,16 @@ class DoctorWindow(QMainWindow):
         col.addWidget(common.status_chip(r["status"]))
         head.addLayout(col, 1)
         lay.addLayout(head)
-        lay.addWidget(w.info_block([
-            ("Пациент", r["patient_name"]),
-            ("Кратность", r["frequency"]),
-            ("Время приёма", r["times"] or "не задано"),
-            ("Начало", common.fmt_date(r["start_date"])),
-            ("Окончание", common.fmt_date(r["end_date"])),
-        ]))
+
+        lay.addWidget(w.info_block(
+            [("Пациент", r["patient_name"]), ("Кратность", r["frequency"]), ("Время приёма", r["times"] or "не задано"),
+             ("Начало", common.fmt_date(r["start_date"])), ("Окончание", common.fmt_date(r["end_date"]))]))
+
         if r["comment"]:
             lay.addWidget(w.section_title("Комментарий"))
             lay.addWidget(w.label(r["comment"], 10, wrap=True))
         lay.addWidget(w.section_title("Курс"))
+
         if r["status"] == "active":
             btn = w.danger_button("Завершить курс")
             btn.clicked.connect(lambda: self._set_status(r, "completed"))
@@ -954,7 +889,6 @@ class DoctorWindow(QMainWindow):
             self.panel.close_panel()
             self.refresh_all()
 
-    # ---------- дневник ----------
     def show_diary(self, id_patient):
         self._diary_patient = id_patient
         pl = w.pal()
@@ -974,8 +908,8 @@ class DoctorWindow(QMainWindow):
         info.setSpacing(4)
         info.addWidget(w.label(p["full_name"], 13, bold=True))
         info.addWidget(w.label(common.patient_meta(p["birth_date"], p["gender"]), 9, color=pl["muted"]))
-        info.addWidget(w.label(w.plural(len(entries), "запись", "записи", "записей") + " в дневнике",
-                               9, color=pl["muted"]))
+        info.addWidget(
+            w.label(w.plural(len(entries), "запись", "записи", "записей") + " в дневнике", 9, color=pl["muted"]))
         diagnosed = sum(1 for e in entries if e["disease_code"] or e["doctor_diagnosis"])
         info.addWidget(w.chip(f"с диагнозом: {diagnosed}", pl["accent_soft"], pl["accent"]))
         info.addStretch()
@@ -994,35 +928,34 @@ class DoctorWindow(QMainWindow):
             card.appear(60 + min(i, 10) * 50)
         self.diary_layout.addStretch()
 
-    # ---------- боковая панель: диагноз ----------
     def open_diagnosis(self, e):
         pl = w.pal()
         mood, color = w.mood_of(e["well_being_text"])
         self.panel.open_panel("Диагноз и комментарий")
         lay = self.panel.content_layout
+
         head = QHBoxLayout()
         head.addWidget(w.label(human_date(e["entry_date"]), 12, bold=True))
         head.addWidget(w.chip(mood, color))
         head.addStretch()
         lay.addLayout(head)
+
         symptoms = e["symptoms"] if e["symptoms"] and e["symptoms"] != "нет" else "без симптомов"
         lay.addWidget(w.label(symptoms, 9, color=pl["muted"], wrap=True))
 
         lay.addWidget(w.section_title("Болезнь по МКБ-10"))
         search = w.search_line("Код или название: I10, диабет, мигрень")
         lay.addWidget(search)
+
         lst = QListWidget()
         lst.setFixedHeight(190)
         lst.setWordWrap(True)
         lst.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
-        lst.setStyleSheet(f"""
-            QListWidget {{ background: {pl['card']}; border: 1px solid {pl['line']}; border-radius: 12px;
-                padding: 4px; font-family: '{w.FONT}'; font-size: 9pt; color: {pl['text']}; outline: none; }}
-            QListWidget::item {{ padding: 7px 8px; border-radius: 8px; }}
-            QListWidget::item:hover {{ background: {pl['accent_soft']}; }}
-            QListWidget::item:selected {{ background: {pl['accent']}; color: white; }}
-        """ + w.scroll_qss().replace("QScrollArea", "QListWidget"))
+        lst.setStyleSheet(
+            f"QListWidget {{ background: {pl['card']}; border: 1px solid {pl['line']}; border-radius: 12px; padding: 4px; font-family: '{w.FONT}'; font-size: 9pt; color: {pl['text']}; outline: none; }} QListWidget::item {{ padding: 7px 8px; border-radius: 8px; }} QListWidget::item:hover {{ background: {pl['accent_soft']}; }} QListWidget::item:selected {{ background: {pl['accent']}; color: white; }}" + w.scroll_qss().replace(
+                "QScrollArea", "QListWidget"))
         lay.addWidget(lst)
+
         chosen = w.label("", 9, bold=True, color=pl["accent"], wrap=True)
         lay.addWidget(chosen)
 
@@ -1054,6 +987,7 @@ class DoctorWindow(QMainWindow):
         diag = QLineEdit(e["doctor_diagnosis"] or "")
         diag.setPlaceholderText("Например: подбор терапии, контроль давления")
         lay.addWidget(diag)
+
         lay.addWidget(w.section_title("Комментарий пациенту"))
         comment = QTextEdit()
         comment.setPlaceholderText("Пациент увидит комментарий в своём дневнике")
@@ -1082,24 +1016,24 @@ class DoctorWindow(QMainWindow):
         lay.addWidget(save)
         lay.addStretch()
 
-    # ---------- боковая панель: мой профиль ----------
     def open_profile(self):
         pl = w.pal()
         d = db.get_doctor_crm(self.id_doctor) or {}
         self.panel.open_panel("Мой профиль")
         lay = self.panel.content_layout
+
         photo = w.Avatar(self.full_name, 240, w.doctor_photo_path(d.get("photo")), shape="rounded", height=260)
         lay.addWidget(photo, 0, Qt.AlignmentFlag.AlignHCenter)
         if not photo.has_photo():
-            hint = w.label("Загрузите фотографию — её увидят пациенты и администратор", 9,
-                           color=pl["accent_light"], wrap=True)
+            hint = w.label("Загрузите фотографию — её увидят пациенты и администратор", 9, color=pl["accent_light"],
+                           wrap=True)
             hint.setAlignment(Qt.AlignmentFlag.AlignCenter)
             lay.addWidget(hint)
+
         upload = w.primary_button("Заменить фото" if d.get("photo") else "Загрузить фото")
 
         def do_upload():
-            path, _ = QFileDialog.getOpenFileName(self, "Моё фото", "",
-                                                  "Изображения (*.png *.jpg *.jpeg *.bmp *.webp)")
+            path, _ = QFileDialog.getOpenFileName(self, "Моё фото", "", "Изображения (*.png *.jpg *.jpeg *.bmp *.webp)")
             if not path:
                 return
             name = common.save_doctor_photo(self.id_doctor, path, d.get("photo"))
@@ -1115,15 +1049,44 @@ class DoctorWindow(QMainWindow):
 
         upload.clicked.connect(do_upload)
         lay.addWidget(upload)
+
         lay.addWidget(w.label(self.full_name, 14, bold=True, wrap=True))
-        lay.addWidget(w.info_block([
-            ("Специальность", d.get("specialty")),
-            ("Кабинет", d.get("office")),
-            ("График приёма", d.get("schedule")),
-            ("Телефон", d.get("phone")),
-            ("E-mail", d.get("email")),
-            ("Логин", d.get("login")),
-        ]))
-        lay.addWidget(w.label("Специальность, кабинет и контакты меняет администратор.", 8,
-                              color=pl["muted"], wrap=True))
+        lay.addWidget(w.info_block(
+            [("Специальность", d.get("specialty")), ("Кабинет", d.get("office")), ("График приёма", d.get("schedule")),
+             ("Телефон", d.get("phone")), ("E-mail", d.get("email")), ("Логин", d.get("login"))]))
+
+        lay.addWidget(
+            w.label("Специальность, кабинет и контакты меняет администратор.", 8, color=pl["muted"], wrap=True))
+
+        # --- Кнопка смены пароля ---
+        change_pass_btn = w.ghost_button("Сменить пароль")
+        change_pass_btn.clicked.connect(lambda: common.ChangePasswordDialog(self, self.id_user).exec())
+        lay.addWidget(change_pass_btn)
+        # ---------------------------
+
         lay.addStretch()
+
+    def export_my_patients_pdf(self):
+        path, _ = QFileDialog.getSaveFileName(self, "Сохранить список", "my_patients.pdf", "PDF (*.pdf)")
+        if not path:
+            return
+        if not path.endswith(".pdf"):
+            path += ".pdf"
+        try:
+            pdf_exporter.export_patients_to_pdf(path, self.patients, f"Пациенты врача: {self.full_name}")
+            mb.info(self, "Готово", "Список пациентов выгружен.")
+        except Exception as e:
+            mb.critical(self, "Ошибка", f"Не удалось: {e}")
+
+    def export_diary_pdf(self, id_patient, patient_name):
+        path, _ = QFileDialog.getSaveFileName(self, "Сохранить дневник", f"diary_{patient_name}.pdf", "PDF (*.pdf)")
+        if not path:
+            return
+        if not path.endswith(".pdf"):
+            path += ".pdf"
+        entries = db.get_diary_full(id_patient)
+        try:
+            pdf_exporter.export_diary_to_pdf(path, patient_name, entries, db.get_indicators_for_diary)
+            mb.info(self, "Готово", "Дневник пациента выгружен.")
+        except Exception as e:
+            mb.critical(self, "Ошибка", f"Не удалось: {e}")

@@ -6,6 +6,7 @@
 записи прежний — его разбирает окно врача.
 """
 
+import logging
 from datetime import date, datetime, timedelta
 
 from PySide6.QtCore import Property, QEasingCurve, QPointF, QPropertyAnimation, QRectF, Qt, QTime, QTimer, Signal
@@ -483,7 +484,7 @@ class PatientWindow(QMainWindow):
         row.addWidget(logo)
         hour = datetime.now().hour
         greeting = ("Доброе утро" if 5 <= hour < 12 else "Добрый день" if hour < 18
-                    else "Добрый вечер" if hour < 23 else "Доброй ночи")
+        else "Добрый вечер" if hour < 23 else "Доброй ночи")
         parts = self.full_name.split()
         # Раньше бралось первое слово — то есть фамилия; обращаемся по имени
         name = parts[1] if len(parts) > 1 else self.full_name
@@ -913,6 +914,13 @@ class PatientWindow(QMainWindow):
             ("Телефон", p.get("phone")),
             ("Логин", p.get("login")),
         ]))
+
+        # --- НОВАЯ КНОПКА СМЕНЫ ПАРОЛЯ ---
+        change_pass_btn = w.ghost_button("Сменить пароль")
+        change_pass_btn.clicked.connect(self.open_change_password)
+        me.body_layout.addWidget(change_pass_btn)
+        # ---------------------------------
+
         me.body_layout.addWidget(w.label("Чтобы изменить данные, обратитесь к врачу или администратору.", 8,
                                          color=pl["muted"], wrap=True))
         flow.addWidget(me)
@@ -939,11 +947,12 @@ class PatientWindow(QMainWindow):
         help_card = w.AnimatedCard(width=420, clickable=False)
         help_card.body_layout.addWidget(w.label("Как пользоваться", 11, bold=True))
         for icon, text in (
-            ("calendar", "«Сегодня» — какие лекарства и во сколько принять. В назначенное время "
-                         "появится напоминание."),
-            ("note", "«Дневник» — отметьте самочувствие, симптомы и показатели. Достаточно выбрать лицо-настроение."),
-            ("book", "«История» — ваши записи, диагнозы и комментарии врача."),
-            ("pill", "«Назначения» — все препараты и ход курса."),
+                ("calendar", "«Сегодня» — какие лекарства и во сколько принять. В назначенное время "
+                             "появится напоминание."),
+                ("note",
+                 "«Дневник» — отметьте самочувствие, симптомы и показатели. Достаточно выбрать лицо-настроение."),
+                ("book", "«История» — ваши записи, диагнозы и комментарии врача."),
+                ("pill", "«Назначения» — все препараты и ход курса."),
         ):
             r = QHBoxLayout()
             r.setSpacing(10)
@@ -1070,13 +1079,18 @@ class PatientWindow(QMainWindow):
             lay.addWidget(w.label(r["comment"], 11, wrap=True))
         lay.addStretch()
 
+    # ---------- смена пароля ----------
+    def open_change_password(self):
+        dlg = common.ChangePasswordDialog(self, self.id_user)
+        dlg.exec()
+
     # ---------- напоминания ----------
     def check_reminders(self):
         """Проверяет, не пора ли принять лекарство, и показывает уведомление."""
         try:
             schedules = db.get_today_schedule_full(self.id_patient)
         except Exception as e:
-            print(f"Ошибка получения расписания: {e}")
+            logging.error(f"Ошибка получения расписания: {e}")
             return
         now = QTime.currentTime()
         today_str = date.today().isoformat()

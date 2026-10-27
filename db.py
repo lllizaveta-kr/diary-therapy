@@ -1216,3 +1216,36 @@ def get_today_schedule_full(id_patient):
         return cur.fetchall()
     finally:
         conn.close()
+
+
+def update_user_password(id_user, old_password, new_password):
+    """Меняет пароль пользователя, если старый пароль верный."""
+    import hashlib
+    conn = get_connection()
+    if not conn: return False, "Нет связи с БД"
+    try:
+        cur = conn.cursor()
+
+        # 1. Проверяем старый пароль
+        cur.execute("SELECT password_hash FROM users WHERE id_user = %s", (id_user,))
+        row = cur.fetchone()
+        if not row:
+            return False, "Пользователь не найден"
+
+        old_hash = hashlib.sha256(old_password.encode('utf-8')).hexdigest()
+        if row[0] != old_hash:
+            return False, "Текущий пароль введен неверно"
+
+        # 2. Устанавливаем новый пароль
+        new_hash = hashlib.sha256(new_password.encode('utf-8')).hexdigest()
+        cur.execute("UPDATE users SET password_hash = %s WHERE id_user = %s", (new_hash, id_user))
+        conn.commit()
+
+        logging.info(f"Пользователь id={id_user} сменил пароль")
+        return True, "Пароль успешно изменен"
+
+    except mysql.connector.Error as err:
+        logging.error(f"Ошибка смены пароля: {err}")
+        return False, "Ошибка базы данных"
+    finally:
+        conn.close()
